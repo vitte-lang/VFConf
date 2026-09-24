@@ -1,0 +1,246 @@
+lib: [
+  "_build/install/default/lib/vfconf/META"
+  "_build/install/default/lib/vfconf/ast/ast.ml" {"ast/ast.ml"}
+  "_build/install/default/lib/vfconf/ast/ast.mli" {"ast/ast.mli"}
+  "_build/install/default/lib/vfconf/ast/node.ml" {"ast/node.ml"}
+  "_build/install/default/lib/vfconf/ast/node.mli" {"ast/node.mli"}
+  "_build/install/default/lib/vfconf/ast/statement.ml" {"ast/statement.ml"}
+  "_build/install/default/lib/vfconf/ast/statement.mli" {"ast/statement.mli"}
+  "_build/install/default/lib/vfconf/ast/value.ml" {"ast/value.ml"}
+  "_build/install/default/lib/vfconf/ast/value.mli" {"ast/value.mli"}
+  "_build/install/default/lib/vfconf/config/config.ml" {"config/config.ml"}
+  "_build/install/default/lib/vfconf/config/config.mli" {"config/config.mli"}
+  "_build/install/default/lib/vfconf/config/include.ml" {"config/include.ml"}
+  "_build/install/default/lib/vfconf/config/include.mli" {"config/include.mli"}
+  "_build/install/default/lib/vfconf/config/loader.ml" {"config/loader.ml"}
+  "_build/install/default/lib/vfconf/config/loader.mli" {"config/loader.mli"}
+  "_build/install/default/lib/vfconf/config/merge.ml" {"config/merge.ml"}
+  "_build/install/default/lib/vfconf/config/merge.mli" {"config/merge.mli"}
+  "_build/install/default/lib/vfconf/diagnostics/diagnostic.ml" {"diagnostics/diagnostic.ml"}
+  "_build/install/default/lib/vfconf/diagnostics/diagnostic.mli" {"diagnostics/diagnostic.mli"}
+  "_build/install/default/lib/vfconf/diagnostics/diagnostic_registry.ml" {"diagnostics/diagnostic_registry.ml"}
+  "_build/install/default/lib/vfconf/diagnostics/diagnostic_registry.mli" {"diagnostics/diagnostic_registry.mli"}
+  "_build/install/default/lib/vfconf/diagnostics/error.ml" {"diagnostics/error.ml"}
+  "_build/install/default/lib/vfconf/diagnostics/error.mli" {"diagnostics/error.mli"}
+  "_build/install/default/lib/vfconf/diagnostics/reporter.ml" {"diagnostics/reporter.ml"}
+  "_build/install/default/lib/vfconf/diagnostics/reporter.mli" {"diagnostics/reporter.mli"}
+  "_build/install/default/lib/vfconf/diagnostics/warning.ml" {"diagnostics/warning.ml"}
+  "_build/install/default/lib/vfconf/diagnostics/warning.mli" {"diagnostics/warning.mli"}
+  "_build/install/default/lib/vfconf/dune-package"
+  "_build/install/default/lib/vfconf/evaluator/condition.ml" {"evaluator/condition.ml"}
+  "_build/install/default/lib/vfconf/evaluator/condition.mli" {"evaluator/condition.mli"}
+  "_build/install/default/lib/vfconf/evaluator/evaluator.ml" {"evaluator/evaluator.ml"}
+  "_build/install/default/lib/vfconf/evaluator/evaluator.mli" {"evaluator/evaluator.mli"}
+  "_build/install/default/lib/vfconf/evaluator/reference.ml" {"evaluator/reference.ml"}
+  "_build/install/default/lib/vfconf/evaluator/reference.mli" {"evaluator/reference.mli"}
+  "_build/install/default/lib/vfconf/formatter/formatter.ml" {"formatter/formatter.ml"}
+  "_build/install/default/lib/vfconf/formatter/formatter.mli" {"formatter/formatter.mli"}
+  "_build/install/default/lib/vfconf/formatter/printer.ml" {"formatter/printer.ml"}
+  "_build/install/default/lib/vfconf/formatter/printer.mli" {"formatter/printer.mli"}
+  "_build/install/default/lib/vfconf/lexer/keyword.ml" {"lexer/keyword.ml"}
+  "_build/install/default/lib/vfconf/lexer/keyword.mli" {"lexer/keyword.mli"}
+  "_build/install/default/lib/vfconf/lexer/lexer.ml" {"lexer/lexer.ml"}
+  "_build/install/default/lib/vfconf/lexer/token.ml" {"lexer/token.ml"}
+  "_build/install/default/lib/vfconf/lexer/token.mli" {"lexer/token.mli"}
+  "_build/install/default/lib/vfconf/opam"
+  "_build/install/default/lib/vfconf/parser/parse.ml" {"parser/parse.ml"}
+  "_build/install/default/lib/vfconf/parser/parse.mli" {"parser/parse.mli"}
+  "_build/install/default/lib/vfconf/parser/parser.ml" {"parser/parser.ml"}
+  "_build/install/default/lib/vfconf/parser/parser.mli" {"parser/parser.mli"}
+  "_build/install/default/lib/vfconf/parser/precedence.ml" {"parser/precedence.ml"}
+  "_build/install/default/lib/vfconf/parser/precedence.mli" {"parser/precedence.mli"}
+  "_build/install/default/lib/vfconf/schema/field.ml" {"schema/field.ml"}
+  "_build/install/default/lib/vfconf/schema/field.mli" {"schema/field.mli"}
+  "_build/install/default/lib/vfconf/schema/rule.ml" {"schema/rule.ml"}
+  "_build/install/default/lib/vfconf/schema/rule.mli" {"schema/rule.mli"}
+  "_build/install/default/lib/vfconf/schema/schema.ml" {"schema/schema.ml"}
+  "_build/install/default/lib/vfconf/schema/schema.mli" {"schema/schema.mli"}
+  "_build/install/default/lib/vfconf/semantic/analyzer.ml" {"semantic/analyzer.ml"}
+  "_build/install/default/lib/vfconf/semantic/analyzer.mli" {"semantic/analyzer.mli"}
+  "_build/install/default/lib/vfconf/semantic/environment.ml" {"semantic/environment.ml"}
+  "_build/install/default/lib/vfconf/semantic/environment.mli" {"semantic/environment.mli"}
+  "_build/install/default/lib/vfconf/semantic/resolver.ml" {"semantic/resolver.ml"}
+  "_build/install/default/lib/vfconf/semantic/resolver.mli" {"semantic/resolver.mli"}
+  "_build/install/default/lib/vfconf/semantic/validator.ml" {"semantic/validator.ml"}
+  "_build/install/default/lib/vfconf/semantic/validator.mli" {"semantic/validator.mli"}
+  "_build/install/default/lib/vfconf/source/position.ml" {"source/position.ml"}
+  "_build/install/default/lib/vfconf/source/position.mli" {"source/position.mli"}
+  "_build/install/default/lib/vfconf/source/source.ml" {"source/source.ml"}
+  "_build/install/default/lib/vfconf/source/source.mli" {"source/source.mli"}
+  "_build/install/default/lib/vfconf/source/span.ml" {"source/span.ml"}
+  "_build/install/default/lib/vfconf/source/span.mli" {"source/span.mli"}
+  "_build/install/default/lib/vfconf/utils/file_utils.ml" {"utils/file_utils.ml"}
+  "_build/install/default/lib/vfconf/utils/file_utils.mli" {"utils/file_utils.mli"}
+  "_build/install/default/lib/vfconf/utils/path.ml" {"utils/path.ml"}
+  "_build/install/default/lib/vfconf/utils/path.mli" {"utils/path.mli"}
+  "_build/install/default/lib/vfconf/utils/string_utils.ml" {"utils/string_utils.ml"}
+  "_build/install/default/lib/vfconf/utils/string_utils.mli" {"utils/string_utils.mli"}
+  "_build/install/default/lib/vfconf/vfconf.a"
+  "_build/install/default/lib/vfconf/vfconf.cma"
+  "_build/install/default/lib/vfconf/vfconf.cmi"
+  "_build/install/default/lib/vfconf/vfconf.cmt"
+  "_build/install/default/lib/vfconf/vfconf.cmx"
+  "_build/install/default/lib/vfconf/vfconf.cmxa"
+  "_build/install/default/lib/vfconf/vfconf.ml"
+  "_build/install/default/lib/vfconf/vfconf__Analyzer.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Analyzer.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Analyzer.cmti"
+  "_build/install/default/lib/vfconf/vfconf__Analyzer.cmx"
+  "_build/install/default/lib/vfconf/vfconf__Ast.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Ast.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Ast.cmti"
+  "_build/install/default/lib/vfconf/vfconf__Ast.cmx"
+  "_build/install/default/lib/vfconf/vfconf__Condition.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Condition.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Condition.cmti"
+  "_build/install/default/lib/vfconf/vfconf__Condition.cmx"
+  "_build/install/default/lib/vfconf/vfconf__Config.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Config.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Config.cmti"
+  "_build/install/default/lib/vfconf/vfconf__Config.cmx"
+  "_build/install/default/lib/vfconf/vfconf__Diagnostic.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Diagnostic.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Diagnostic.cmti"
+  "_build/install/default/lib/vfconf/vfconf__Diagnostic.cmx"
+  "_build/install/default/lib/vfconf/vfconf__Diagnostic_registry.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Diagnostic_registry.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Diagnostic_registry.cmti"
+  "_build/install/default/lib/vfconf/vfconf__Diagnostic_registry.cmx"
+  "_build/install/default/lib/vfconf/vfconf__Environment.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Environment.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Environment.cmti"
+  "_build/install/default/lib/vfconf/vfconf__Environment.cmx"
+  "_build/install/default/lib/vfconf/vfconf__Error.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Error.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Error.cmti"
+  "_build/install/default/lib/vfconf/vfconf__Error.cmx"
+  "_build/install/default/lib/vfconf/vfconf__Evaluator.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Evaluator.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Evaluator.cmti"
+  "_build/install/default/lib/vfconf/vfconf__Evaluator.cmx"
+  "_build/install/default/lib/vfconf/vfconf__Field.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Field.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Field.cmti"
+  "_build/install/default/lib/vfconf/vfconf__Field.cmx"
+  "_build/install/default/lib/vfconf/vfconf__File_utils.cmi"
+  "_build/install/default/lib/vfconf/vfconf__File_utils.cmt"
+  "_build/install/default/lib/vfconf/vfconf__File_utils.cmti"
+  "_build/install/default/lib/vfconf/vfconf__File_utils.cmx"
+  "_build/install/default/lib/vfconf/vfconf__Formatter.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Formatter.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Formatter.cmti"
+  "_build/install/default/lib/vfconf/vfconf__Formatter.cmx"
+  "_build/install/default/lib/vfconf/vfconf__Include.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Include.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Include.cmti"
+  "_build/install/default/lib/vfconf/vfconf__Include.cmx"
+  "_build/install/default/lib/vfconf/vfconf__Keyword.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Keyword.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Keyword.cmti"
+  "_build/install/default/lib/vfconf/vfconf__Keyword.cmx"
+  "_build/install/default/lib/vfconf/vfconf__Lexer.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Lexer.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Lexer.cmx"
+  "_build/install/default/lib/vfconf/vfconf__Loader.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Loader.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Loader.cmti"
+  "_build/install/default/lib/vfconf/vfconf__Loader.cmx"
+  "_build/install/default/lib/vfconf/vfconf__Merge.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Merge.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Merge.cmti"
+  "_build/install/default/lib/vfconf/vfconf__Merge.cmx"
+  "_build/install/default/lib/vfconf/vfconf__Node.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Node.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Node.cmti"
+  "_build/install/default/lib/vfconf/vfconf__Node.cmx"
+  "_build/install/default/lib/vfconf/vfconf__Parse.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Parse.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Parse.cmti"
+  "_build/install/default/lib/vfconf/vfconf__Parse.cmx"
+  "_build/install/default/lib/vfconf/vfconf__Parser.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Parser.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Parser.cmti"
+  "_build/install/default/lib/vfconf/vfconf__Parser.cmx"
+  "_build/install/default/lib/vfconf/vfconf__Path.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Path.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Path.cmti"
+  "_build/install/default/lib/vfconf/vfconf__Path.cmx"
+  "_build/install/default/lib/vfconf/vfconf__Position.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Position.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Position.cmti"
+  "_build/install/default/lib/vfconf/vfconf__Position.cmx"
+  "_build/install/default/lib/vfconf/vfconf__Precedence.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Precedence.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Precedence.cmti"
+  "_build/install/default/lib/vfconf/vfconf__Precedence.cmx"
+  "_build/install/default/lib/vfconf/vfconf__Printer.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Printer.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Printer.cmti"
+  "_build/install/default/lib/vfconf/vfconf__Printer.cmx"
+  "_build/install/default/lib/vfconf/vfconf__Reference.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Reference.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Reference.cmti"
+  "_build/install/default/lib/vfconf/vfconf__Reference.cmx"
+  "_build/install/default/lib/vfconf/vfconf__Reporter.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Reporter.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Reporter.cmti"
+  "_build/install/default/lib/vfconf/vfconf__Reporter.cmx"
+  "_build/install/default/lib/vfconf/vfconf__Resolver.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Resolver.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Resolver.cmti"
+  "_build/install/default/lib/vfconf/vfconf__Resolver.cmx"
+  "_build/install/default/lib/vfconf/vfconf__Rule.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Rule.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Rule.cmti"
+  "_build/install/default/lib/vfconf/vfconf__Rule.cmx"
+  "_build/install/default/lib/vfconf/vfconf__Schema.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Schema.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Schema.cmti"
+  "_build/install/default/lib/vfconf/vfconf__Schema.cmx"
+  "_build/install/default/lib/vfconf/vfconf__Source.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Source.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Source.cmti"
+  "_build/install/default/lib/vfconf/vfconf__Source.cmx"
+  "_build/install/default/lib/vfconf/vfconf__Span.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Span.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Span.cmti"
+  "_build/install/default/lib/vfconf/vfconf__Span.cmx"
+  "_build/install/default/lib/vfconf/vfconf__Statement.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Statement.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Statement.cmti"
+  "_build/install/default/lib/vfconf/vfconf__Statement.cmx"
+  "_build/install/default/lib/vfconf/vfconf__String_utils.cmi"
+  "_build/install/default/lib/vfconf/vfconf__String_utils.cmt"
+  "_build/install/default/lib/vfconf/vfconf__String_utils.cmti"
+  "_build/install/default/lib/vfconf/vfconf__String_utils.cmx"
+  "_build/install/default/lib/vfconf/vfconf__Token.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Token.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Token.cmti"
+  "_build/install/default/lib/vfconf/vfconf__Token.cmx"
+  "_build/install/default/lib/vfconf/vfconf__Validator.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Validator.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Validator.cmti"
+  "_build/install/default/lib/vfconf/vfconf__Validator.cmx"
+  "_build/install/default/lib/vfconf/vfconf__Value.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Value.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Value.cmti"
+  "_build/install/default/lib/vfconf/vfconf__Value.cmx"
+  "_build/install/default/lib/vfconf/vfconf__Warning.cmi"
+  "_build/install/default/lib/vfconf/vfconf__Warning.cmt"
+  "_build/install/default/lib/vfconf/vfconf__Warning.cmti"
+  "_build/install/default/lib/vfconf/vfconf__Warning.cmx"
+]
+libexec: [
+  "_build/install/default/lib/vfconf/vfconf.cmxs"
+]
+bin: [
+  "_build/install/default/bin/vfconf"
+  "_build/install/default/bin/vfconf-check"
+  "_build/install/default/bin/vfconf-dump"
+  "_build/install/default/bin/vfconf-fmt"
+]
+doc: [
+  "_build/install/default/doc/vfconf/CHANGELOG.md"
+  "_build/install/default/doc/vfconf/LICENSE"
+  "_build/install/default/doc/vfconf/README.md"
+]

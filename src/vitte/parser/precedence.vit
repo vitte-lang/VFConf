@@ -1,7 +1,0 @@
-space ucl/parser/precedence
-
-# precedence levels
-const PREC_LOW = 0
-const PREC_ADD = 10
-const PREC_MUL = 20
-const PREC_COMP = 30

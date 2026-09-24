@@ -1,6 +1,0 @@
-space ucl/parser/diagnostics
-
-form ParseError
-  message String
-  position Int
-.end

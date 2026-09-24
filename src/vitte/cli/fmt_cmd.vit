@@ -1,7 +1,0 @@
-space ucl/cli
-
-pull core/io
-
-proc fmt_cmd(args List of String)
-  io.print "fmt command"
-.end

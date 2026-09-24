@@ -1,8 +1,0 @@
-space ucl/parser/macros
-
-pull ucl/parser
-pull ucl/ast/macro
-
-proc parse_macro(p Parser) -> MacroDecl
-  ret MacroDecl
-.end

@@ -1,0 +1,13 @@
+(executables
+(names
+main
+check
+dump
+fmt)
+(public_names
+vfconf
+vfconf-check
+vfconf-dump
+vfconf-fmt)
+(libraries
+vfconf))

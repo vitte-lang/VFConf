@@ -1,9 +1,0 @@
-space ucl/util/vec
-
-form Vec
-  items List of String
-.end
-
-proc push(v Vec, x String)
-  v.items.push(x)
-.end

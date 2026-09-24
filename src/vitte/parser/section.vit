@@ -1,9 +1,0 @@
-space ucl/parser/section
-
-pull ucl/parser
-pull ucl/ast/stmt
-
-proc parse_section(p Parser) -> Section
-  # parse section block
-  ret Section
-.end

@@ -1,7 +1,0 @@
-space ucl/cli
-
-pull core/io
-
-proc toml_cmd(args List of String)
-  io.print "toml command"
-.end

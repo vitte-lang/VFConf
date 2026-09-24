@@ -1,0 +1,96 @@
+type token =
+    WHEN
+  | SUB_ASSIGN
+  | STRING of string
+  | SIZE of (float * Value.size_unit)
+  | SEMICOLON
+  | RPAREN
+  | RGBA
+  | RGB
+  | RBRACKET
+  | RBRACE
+  | OR
+  | NULL
+  | NOT
+  | NEWLINE
+  | NEQ
+  | LTE
+  | LT
+  | LPAREN
+  | LBRACKET
+  | LBRACE
+  | INTEGER of int64
+  | INCLUDE
+  | IDENTIFIER of string
+  | GTE
+  | GT
+  | FLOAT of float
+  | EQEQ
+  | EOF
+  | ELSE
+  | DURATION of (float * Value.duration_unit)
+  | DOT
+  | DOLLAR
+  | DEFINE_ASSIGN
+  | DEFINE
+  | COMMA
+  | COLOR of string
+  | COLON
+  | BOOLEAN of bool
+  | ASSIGN
+  | AND
+  | ADD_ASSIGN
+val node_position : Lexing.position -> Node.position
+val span : Lexing.position -> Lexing.position -> Node.span
+val located : Lexing.position -> Lexing.position -> 'a -> 'a Node.t
+val object_entry :
+  Value.reference ->
+  Value.t Node.t -> Lexing.position -> Lexing.position -> Value.object_entry
+val hex_digit_value : char -> int
+val expand_hex_digit : char -> int
+val parse_hex_byte : string -> int -> int
+val color_of_hex : string -> Value.color
+val int_of_int64_checked : int64 -> int
+val alpha_of_value : Value.t Node.t -> float
+val rgb_component : Value.t Node.t -> int
+val rgba_alpha : Value.t Node.t -> float
+val menhir_begin_marker : int
+val xv_value : Value.t Node.t
+val xv_statements_before_rbrace : Statement.t Node.t list
+val xv_statement : Statement.t Node.t
+val xv_separators1 : unit
+val xv_separators : unit
+val xv_separator : unit
+val xv_section : Statement.section
+val xv_reference : Value.reference
+val xv_path_component : string
+val xv_path : Statement.section_name
+val xv_optional_else : Statement.t Node.t list option
+val xv_object_value : Value.object_entry list
+val xv_object_tail : Value.object_entry list
+val xv_object_entry : Value.object_entry
+val xv_object_contents : Value.object_entry list
+val xv_numeric_value : Value.t Node.t
+val xv_non_section_statement : Statement.t Node.t
+val xv_ini_section_body : Statement.t Node.t list
+val xv_ini_section : Statement.t Node.t
+val xv_include_statement : Statement.include_statement
+val xv_document_items : Statement.t Node.t list
+val xv_document_item : Statement.t Node.t
+val xv_document : Statement.t Node.t list
+val xv_define_statement : Statement.define_statement
+val xv_conditional : Statement.conditional
+val xv_condition_primary : Statement.condition Node.t
+val xv_condition_or : Statement.condition Node.t
+val xv_condition_not : Statement.condition Node.t
+val xv_condition_and : Statement.condition Node.t
+val xv_condition : Statement.condition Node.t
+val xv_comparison_operator : Statement.comparison_operator
+val xv_block_statements : Statement.t Node.t list
+val xv_block_statement_tail : Statement.t Node.t list
+val xv_assignment_operator : Statement.assignment_operator
+val xv_assignment : Statement.assignment
+val xv_array_tail : Value.t Node.t list
+val xv_array_contents : Value.t Node.t list
+val xv_array : Value.t Node.t list
+val menhir_end_marker : int

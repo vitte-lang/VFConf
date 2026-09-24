@@ -1,7 +1,0 @@
-space ucl/cli
-
-pull core/io
-
-proc json_cmd(args List of String)
-  io.print "json command"
-.end

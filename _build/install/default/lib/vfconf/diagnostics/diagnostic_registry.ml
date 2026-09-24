@@ -1,0 +1,1 @@
+../../../../../default/lib/diagnostics/diagnostic_registry.ml

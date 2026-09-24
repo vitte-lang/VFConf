@@ -1,0 +1,138 @@
+opam-version: "2.0"
+
+name: "vfconf"
+version: "0.1.0"
+
+synopsis: "Vitte Foundation Configuration Language"
+
+description: """
+VFConf is the Vitte Foundation Configuration Language.
+
+It is a structured configuration language designed for the Vitte ecosystem
+and uses the .vf.conf file extension.
+
+VFConf provides:
+
+- structured sections
+- typed values
+- arrays and objects
+- references
+- includes
+- definitions
+- conditional configuration
+- assignment operators
+- colors
+- durations
+- storage sizes
+- schema validation
+- diagnostics with source spans
+- formatting tools
+- language definitions
+- themes
+- editor configuration
+
+The package provides the following command-line tools:
+
+  vfconf
+  vfconf-check
+  vfconf-dump
+  vfconf-fmt
+"""
+
+maintainer: [
+  "Vincent Rousseau"
+]
+
+authors: [
+  "Vincent Rousseau"
+]
+
+license: "MIT"
+
+homepage: "https://github.com/vitte-lang/vfconf"
+
+bug-reports: "https://github.com/vitte-lang/vfconf/issues"
+
+dev-repo: "git+https://github.com/vitte-lang/vfconf.git"
+
+doc: "https://github.com/vitte-lang/vfconf"
+
+tags: [
+  "configuration"
+  "config"
+  "language"
+  "parser"
+  "lexer"
+  "compiler"
+  "vitte"
+  "vfconf"
+  "developer-tools"
+]
+
+depends: [
+  "ocaml" {>= "5.1"}
+  "dune" {>= "3.17"}
+  "menhir" {>= "20231231"}
+]
+
+build: [
+  [
+    "dune"
+    "subst"
+  ] {dev}
+
+  [
+    "dune"
+    "build"
+    "-p"
+    name
+    "-j"
+    jobs
+    "@install"
+    "@runtest"
+  ]
+]
+
+install: [
+  [
+    "dune"
+    "install"
+    "-p"
+    name
+    "--prefix"
+    prefix
+    "--libdir"
+    lib
+    "--docdir"
+    doc
+    "--mandir"
+    man
+  ]
+]
+
+remove: [
+  [
+    "dune"
+    "uninstall"
+    "-p"
+    name
+    "--prefix"
+    prefix
+    "--libdir"
+    lib
+    "--docdir"
+    doc
+    "--mandir"
+    man
+  ]
+]
+
+available: [
+  arch != "arm32"
+]
+
+x-ci-accept-failures: [
+  "freebsd"
+  "openbsd"
+  "netbsd"
+]

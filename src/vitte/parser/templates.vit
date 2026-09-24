@@ -1,8 +1,0 @@
-space ucl/parser/templates
-
-pull ucl/parser
-pull ucl/ast/template
-
-proc parse_template(p Parser) -> TemplateDecl
-  ret TemplateDecl
-.end

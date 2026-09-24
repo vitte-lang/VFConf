@@ -1,0 +1,9 @@
+vfconf__Diagnostic
+vfconf__Error
+vfconf__Formatter
+vfconf__Keyword
+vfconf__Lexer
+vfconf__Node
+vfconf__Parser
+vfconf__Statement
+vfconf__Value

@@ -1,7 +1,0 @@
-space ucl/cli
-
-pull core/io
-
-proc eval_cmd(args List of String)
-  io.print "eval command"
-.end

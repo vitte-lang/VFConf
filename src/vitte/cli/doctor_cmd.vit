@@ -1,7 +1,0 @@
-space ucl/cli
-
-pull core/io
-
-proc doctor_cmd()
-  io.print "UCL environment OK"
-.end

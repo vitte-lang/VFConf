@@ -1,5 +1,0 @@
-space ucl/eval/finalizer
-
-proc finalize()
-  # finalize config output
-.end

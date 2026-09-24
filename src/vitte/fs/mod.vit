@@ -1,9 +1,0 @@
-space ucl/fs
-
-pull ucl/fs/loader
-pull ucl/fs/virtual_fs
-pull ucl/fs/paths
-pull ucl/fs/cache
-
-share all
-.end

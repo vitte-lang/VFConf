@@ -1,0 +1,58 @@
+; VFConf — Vitte Foundation Configuration Language
+; lib/dune
+
+(include_subdirs unqualified)
+
+(library
+ (name vfconf)
+ (public_name vfconf)
+ (libraries unix)
+ (modules
+  Ast
+  Node
+  Value
+  Statement
+
+  Lexer
+  Token
+  Keyword
+
+  Parser
+  Parse
+  Precedence
+
+  Source
+  Position
+  Span
+
+  Diagnostic Diagnostic_registry
+  Error
+  Warning
+  Reporter
+
+  Analyzer
+  Validator
+  Resolver
+  Environment
+
+  Config
+  Loader
+  Include
+  Merge
+
+  Evaluator
+  Condition
+  Reference
+
+  Formatter
+  Printer
+
+  Schema
+  Field
+  Rule
+
+  Path
+  String_utils
+  File_utils))
+
+

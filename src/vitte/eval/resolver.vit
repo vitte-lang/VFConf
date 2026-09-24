@@ -1,7 +1,0 @@
-space ucl/eval/resolver
-
-pull ucl/hir
-
-proc resolve_nodes(p HProgram)
-  # resolve symbols
-.end

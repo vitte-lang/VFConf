@@ -1,8 +1,0 @@
-space ucl/format
-
-pull ucl/format/formatter
-pull ucl/format/printer
-pull ucl/format/style
-
-share all
-.end

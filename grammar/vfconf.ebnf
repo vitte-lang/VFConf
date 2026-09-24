@@ -1,0 +1,242 @@
+(* ============================================================
+ * VFConf — Vitte Foundation Configuration Language
+ * Canonical Grammar
+ * File extension: *.vf.conf
+ * ============================================================ *)
+
+document        = { statement } ;
+
+statement       = section
+                | assignment
+                | include
+                | define
+                | conditional
+                ;
+
+(* ---------- Sections ---------- *)
+
+section         = "[", section_name, "]", newline,
+                  { assignment | include | define | conditional } ;
+
+section_name    = identifier, { ".", identifier } ;
+
+(* ---------- Assignments ---------- *)
+
+assignment      = key, assignment_op, value, terminator ;
+
+assignment_op   = "=" | ":=" | "+=" | "-=" ;
+
+key             = identifier, { ".", identifier } ;
+
+(* ---------- Values ---------- *)
+
+value           = string
+                | integer
+                | float
+                | boolean
+                | null
+                | array
+                | object
+                | reference
+                | color
+                | duration
+                | size ;
+
+(* ---------- Primitive values ---------- *)
+
+string          = quoted_string | raw_string ;
+
+quoted_string   = '"', { string_character | escape }, '"' ;
+
+raw_string      = "'", { raw_character }, "'" ;
+
+integer         = [ sign ], digit, { digit | "_" } ;
+
+float           = [ sign ],
+                  digit, { digit | "_" },
+                  ".",
+                  digit, { digit | "_" } ;
+
+sign            = "+" | "-" ;
+
+boolean         = "true" | "false" | "on" | "off" ;
+
+null            = "null" | "none" ;
+
+(* ---------- Arrays ---------- *)
+
+array           = "[",
+                  [ value, { ",", value }, [ "," ] ],
+                  "]" ;
+
+(* ---------- Objects ---------- *)
+
+object          = "{",
+                  [ object_entry,
+                    { ",", object_entry },
+                    [ "," ]
+                  ],
+                  "}" ;
+
+object_entry    = key, ":", value ;
+
+(* ---------- References ---------- *)
+
+reference       = "$", identifier,
+                  { ".", identifier } ;
+
+(* ---------- Includes ---------- *)
+
+include         = "include", string, terminator ;
+
+(* ---------- Definitions ---------- *)
+
+define          = "define",
+                  identifier,
+                  "=",
+                  value,
+                  terminator ;
+
+(* ---------- Conditional configuration ---------- *)
+
+conditional     = "when",
+                  condition,
+                  "{",
+                  { statement },
+                  "}",
+                  [ "else",
+                    "{",
+                    { statement },
+                    "}"
+                  ] ;
+
+condition       = condition_or ;
+
+condition_or    = condition_and,
+                  { "||", condition_and } ;
+
+condition_and   = condition_unary,
+                  { "&&", condition_unary } ;
+
+condition_unary = [ "!" ], condition_primary ;
+
+condition_primary
+                = reference
+                | boolean
+                | comparison
+                | "(", condition, ")" ;
+
+comparison      = reference,
+                  comparison_op,
+                  value ;
+
+comparison_op   = "=="
+                | "!="
+                | "<"
+                | "<="
+                | ">"
+                | ">=" ;
+
+(* ---------- Theme values ---------- *)
+
+color           = hex_color | rgb_color | rgba_color ;
+
+hex_color       = "#", hex_digit, hex_digit, hex_digit,
+                  [ hex_digit, hex_digit, hex_digit,
+                    [ hex_digit, hex_digit ] ] ;
+
+rgb_color       = "rgb",
+                  "(",
+                  integer, ",",
+                  integer, ",",
+                  integer,
+                  ")" ;
+
+rgba_color      = "rgba",
+                  "(",
+                  integer, ",",
+                  integer, ",",
+                  integer, ",",
+                  float,
+                  ")" ;
+
+(* ---------- Units ---------- *)
+
+duration        = number,
+                  ( "ns"
+                  | "us"
+                  | "ms"
+                  | "s"
+                  | "min"
+                  | "h"
+                  ) ;
+
+size            = number,
+                  ( "B"
+                  | "KB"
+                  | "MB"
+                  | "GB"
+                  | "KiB"
+                  | "MiB"
+                  | "GiB"
+                  ) ;
+
+number          = integer | float ;
+
+(* ---------- Identifiers ---------- *)
+
+identifier      = identifier_start,
+                  { identifier_continue } ;
+
+identifier_start
+                = letter | "_" ;
+
+identifier_continue
+                = letter
+                | digit
+                | "_"
+                | "-" ;
+
+(* ---------- Lexical rules ---------- *)
+
+letter          = "A".."Z" | "a".."z" ;
+
+digit           = "0".."9" ;
+
+hex_digit       = digit
+                | "A".."F"
+                | "a".."f" ;
+
+escape          = "\n"
+                | "\r"
+                | "\t"
+                | "\\"
+                | '\"'
+                | "\'" ;
+
+string_character
+                = ? any Unicode character except '"', '\', CR and LF ? ;
+
+raw_character   = ? any Unicode character except "'" ? ;
+
+(* ---------- Comments ---------- *)
+
+comment         = line_comment | block_comment ;
+
+line_comment    = "#", { ? character except newline ? }
+                | "//", { ? character except newline ? } ;
+
+block_comment   = "/*",
+                  { ? character sequence except "*/" ? },
+                  "*/" ;
+
+(* ---------- Layout ---------- *)
+
+terminator      = ";" | newline ;
+
+newline         = "\n" | "\r\n" ;
+
+whitespace      = " " | "\t" | newline ;
+
+(* Comments and insignificant whitespace may occur between
+ * lexical tokens unless they occur inside string literals. *)

@@ -1,8 +1,0 @@
-space ucl/parser/schema
-
-pull ucl/parser
-pull ucl/ast/schema
-
-proc parse_schema(p Parser) -> SchemaDecl
-  ret SchemaDecl
-.end

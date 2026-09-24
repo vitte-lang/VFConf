@@ -1,6 +1,0 @@
-space ucl/eval/references
-
-proc resolve_ref(name String) -> String
-  # reference resolution
-  ret name
-.end

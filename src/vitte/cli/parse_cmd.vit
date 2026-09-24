@@ -1,7 +1,0 @@
-space ucl/cli
-
-pull core/io
-
-proc parse_cmd(args List of String)
-  io.print "parse command"
-.end

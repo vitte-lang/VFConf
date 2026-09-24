@@ -1,9 +1,0 @@
-space ucl/hir
-
-pull ucl/hir/lower
-pull ucl/hir/node
-pull ucl/hir/symbol
-pull ucl/hir/path
-
-share all
-.end

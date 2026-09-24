@@ -1,6 +1,0 @@
-space ucl/util/result
-
-pick Result
-  Ok String
-  Err String
-.end

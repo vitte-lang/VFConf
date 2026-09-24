@@ -1,0 +1,512 @@
+(lang dune 3.24)
+(name vfconf)
+(version 0.1.0)
+(sections (lib .) (libexec .) (bin ../../bin) (doc ../../doc/vfconf))
+(files
+ (lib
+  (META
+   ast/ast.ml
+   ast/ast.mli
+   ast/node.ml
+   ast/node.mli
+   ast/statement.ml
+   ast/statement.mli
+   ast/value.ml
+   ast/value.mli
+   config/config.ml
+   config/config.mli
+   config/include.ml
+   config/include.mli
+   config/loader.ml
+   config/loader.mli
+   config/merge.ml
+   config/merge.mli
+   diagnostics/diagnostic.ml
+   diagnostics/diagnostic.mli
+   diagnostics/diagnostic_registry.ml
+   diagnostics/diagnostic_registry.mli
+   diagnostics/error.ml
+   diagnostics/error.mli
+   diagnostics/reporter.ml
+   diagnostics/reporter.mli
+   diagnostics/warning.ml
+   diagnostics/warning.mli
+   dune-package
+   evaluator/condition.ml
+   evaluator/condition.mli
+   evaluator/evaluator.ml
+   evaluator/evaluator.mli
+   evaluator/reference.ml
+   evaluator/reference.mli
+   formatter/formatter.ml
+   formatter/formatter.mli
+   formatter/printer.ml
+   formatter/printer.mli
+   lexer/keyword.ml
+   lexer/keyword.mli
+   lexer/lexer.ml
+   lexer/token.ml
+   lexer/token.mli
+   opam
+   parser/parse.ml
+   parser/parse.mli
+   parser/parser.ml
+   parser/parser.mli
+   parser/precedence.ml
+   parser/precedence.mli
+   schema/field.ml
+   schema/field.mli
+   schema/rule.ml
+   schema/rule.mli
+   schema/schema.ml
+   schema/schema.mli
+   semantic/analyzer.ml
+   semantic/analyzer.mli
+   semantic/environment.ml
+   semantic/environment.mli
+   semantic/resolver.ml
+   semantic/resolver.mli
+   semantic/validator.ml
+   semantic/validator.mli
+   source/position.ml
+   source/position.mli
+   source/source.ml
+   source/source.mli
+   source/span.ml
+   source/span.mli
+   utils/file_utils.ml
+   utils/file_utils.mli
+   utils/path.ml
+   utils/path.mli
+   utils/string_utils.ml
+   utils/string_utils.mli
+   vfconf.a
+   vfconf.cma
+   vfconf.cmi
+   vfconf.cmt
+   vfconf.cmx
+   vfconf.cmxa
+   vfconf.ml
+   vfconf__Analyzer.cmi
+   vfconf__Analyzer.cmt
+   vfconf__Analyzer.cmti
+   vfconf__Analyzer.cmx
+   vfconf__Ast.cmi
+   vfconf__Ast.cmt
+   vfconf__Ast.cmti
+   vfconf__Ast.cmx
+   vfconf__Condition.cmi
+   vfconf__Condition.cmt
+   vfconf__Condition.cmti
+   vfconf__Condition.cmx
+   vfconf__Config.cmi
+   vfconf__Config.cmt
+   vfconf__Config.cmti
+   vfconf__Config.cmx
+   vfconf__Diagnostic.cmi
+   vfconf__Diagnostic.cmt
+   vfconf__Diagnostic.cmti
+   vfconf__Diagnostic.cmx
+   vfconf__Diagnostic_registry.cmi
+   vfconf__Diagnostic_registry.cmt
+   vfconf__Diagnostic_registry.cmti
+   vfconf__Diagnostic_registry.cmx
+   vfconf__Environment.cmi
+   vfconf__Environment.cmt
+   vfconf__Environment.cmti
+   vfconf__Environment.cmx
+   vfconf__Error.cmi
+   vfconf__Error.cmt
+   vfconf__Error.cmti
+   vfconf__Error.cmx
+   vfconf__Evaluator.cmi
+   vfconf__Evaluator.cmt
+   vfconf__Evaluator.cmti
+   vfconf__Evaluator.cmx
+   vfconf__Field.cmi
+   vfconf__Field.cmt
+   vfconf__Field.cmti
+   vfconf__Field.cmx
+   vfconf__File_utils.cmi
+   vfconf__File_utils.cmt
+   vfconf__File_utils.cmti
+   vfconf__File_utils.cmx
+   vfconf__Formatter.cmi
+   vfconf__Formatter.cmt
+   vfconf__Formatter.cmti
+   vfconf__Formatter.cmx
+   vfconf__Include.cmi
+   vfconf__Include.cmt
+   vfconf__Include.cmti
+   vfconf__Include.cmx
+   vfconf__Keyword.cmi
+   vfconf__Keyword.cmt
+   vfconf__Keyword.cmti
+   vfconf__Keyword.cmx
+   vfconf__Lexer.cmi
+   vfconf__Lexer.cmt
+   vfconf__Lexer.cmx
+   vfconf__Loader.cmi
+   vfconf__Loader.cmt
+   vfconf__Loader.cmti
+   vfconf__Loader.cmx
+   vfconf__Merge.cmi
+   vfconf__Merge.cmt
+   vfconf__Merge.cmti
+   vfconf__Merge.cmx
+   vfconf__Node.cmi
+   vfconf__Node.cmt
+   vfconf__Node.cmti
+   vfconf__Node.cmx
+   vfconf__Parse.cmi
+   vfconf__Parse.cmt
+   vfconf__Parse.cmti
+   vfconf__Parse.cmx
+   vfconf__Parser.cmi
+   vfconf__Parser.cmt
+   vfconf__Parser.cmti
+   vfconf__Parser.cmx
+   vfconf__Path.cmi
+   vfconf__Path.cmt
+   vfconf__Path.cmti
+   vfconf__Path.cmx
+   vfconf__Position.cmi
+   vfconf__Position.cmt
+   vfconf__Position.cmti
+   vfconf__Position.cmx
+   vfconf__Precedence.cmi
+   vfconf__Precedence.cmt
+   vfconf__Precedence.cmti
+   vfconf__Precedence.cmx
+   vfconf__Printer.cmi
+   vfconf__Printer.cmt
+   vfconf__Printer.cmti
+   vfconf__Printer.cmx
+   vfconf__Reference.cmi
+   vfconf__Reference.cmt
+   vfconf__Reference.cmti
+   vfconf__Reference.cmx
+   vfconf__Reporter.cmi
+   vfconf__Reporter.cmt
+   vfconf__Reporter.cmti
+   vfconf__Reporter.cmx
+   vfconf__Resolver.cmi
+   vfconf__Resolver.cmt
+   vfconf__Resolver.cmti
+   vfconf__Resolver.cmx
+   vfconf__Rule.cmi
+   vfconf__Rule.cmt
+   vfconf__Rule.cmti
+   vfconf__Rule.cmx
+   vfconf__Schema.cmi
+   vfconf__Schema.cmt
+   vfconf__Schema.cmti
+   vfconf__Schema.cmx
+   vfconf__Source.cmi
+   vfconf__Source.cmt
+   vfconf__Source.cmti
+   vfconf__Source.cmx
+   vfconf__Span.cmi
+   vfconf__Span.cmt
+   vfconf__Span.cmti
+   vfconf__Span.cmx
+   vfconf__Statement.cmi
+   vfconf__Statement.cmt
+   vfconf__Statement.cmti
+   vfconf__Statement.cmx
+   vfconf__String_utils.cmi
+   vfconf__String_utils.cmt
+   vfconf__String_utils.cmti
+   vfconf__String_utils.cmx
+   vfconf__Token.cmi
+   vfconf__Token.cmt
+   vfconf__Token.cmti
+   vfconf__Token.cmx
+   vfconf__Validator.cmi
+   vfconf__Validator.cmt
+   vfconf__Validator.cmti
+   vfconf__Validator.cmx
+   vfconf__Value.cmi
+   vfconf__Value.cmt
+   vfconf__Value.cmti
+   vfconf__Value.cmx
+   vfconf__Warning.cmi
+   vfconf__Warning.cmt
+   vfconf__Warning.cmti
+   vfconf__Warning.cmx))
+ (libexec (vfconf.cmxs))
+ (bin (vfconf vfconf-check vfconf-dump vfconf-fmt))
+ (doc (CHANGELOG.md LICENSE README.md)))
+(library
+ (name vfconf)
+ (kind normal)
+ (archives (byte vfconf.cma) (native vfconf.cmxa))
+ (plugins (byte vfconf.cma) (native vfconf.cmxs))
+ (native_archives vfconf.a)
+ (requires unix)
+ (main_module_name Vfconf)
+ (modes byte native)
+ (modules
+  (wrapped
+   (group
+    (alias
+     (obj_name vfconf)
+     (visibility public)
+     (kind alias)
+     (source (path Vfconf) (impl (path vfconf.ml-gen))))
+    (name Vfconf)
+    (modules
+     (module
+      (obj_name vfconf__Analyzer)
+      (visibility public)
+      (source
+       (path Analyzer)
+       (intf (path semantic/analyzer.mli))
+       (impl (path semantic/analyzer.ml))))
+     (module
+      (obj_name vfconf__Ast)
+      (visibility public)
+      (source (path Ast) (intf (path ast/ast.mli)) (impl (path ast/ast.ml))))
+     (module
+      (obj_name vfconf__Condition)
+      (visibility public)
+      (source
+       (path Condition)
+       (intf (path evaluator/condition.mli))
+       (impl (path evaluator/condition.ml))))
+     (module
+      (obj_name vfconf__Config)
+      (visibility public)
+      (source
+       (path Config)
+       (intf (path config/config.mli))
+       (impl (path config/config.ml))))
+     (module
+      (obj_name vfconf__Diagnostic)
+      (visibility public)
+      (source
+       (path Diagnostic)
+       (intf (path diagnostics/diagnostic.mli))
+       (impl (path diagnostics/diagnostic.ml))))
+     (module
+      (obj_name vfconf__Diagnostic_registry)
+      (visibility public)
+      (source
+       (path Diagnostic_registry)
+       (intf (path diagnostics/diagnostic_registry.mli))
+       (impl (path diagnostics/diagnostic_registry.ml))))
+     (module
+      (obj_name vfconf__Environment)
+      (visibility public)
+      (source
+       (path Environment)
+       (intf (path semantic/environment.mli))
+       (impl (path semantic/environment.ml))))
+     (module
+      (obj_name vfconf__Error)
+      (visibility public)
+      (source
+       (path Error)
+       (intf (path diagnostics/error.mli))
+       (impl (path diagnostics/error.ml))))
+     (module
+      (obj_name vfconf__Evaluator)
+      (visibility public)
+      (source
+       (path Evaluator)
+       (intf (path evaluator/evaluator.mli))
+       (impl (path evaluator/evaluator.ml))))
+     (module
+      (obj_name vfconf__Field)
+      (visibility public)
+      (source
+       (path Field)
+       (intf (path schema/field.mli))
+       (impl (path schema/field.ml))))
+     (module
+      (obj_name vfconf__File_utils)
+      (visibility public)
+      (source
+       (path File_utils)
+       (intf (path utils/file_utils.mli))
+       (impl (path utils/file_utils.ml))))
+     (module
+      (obj_name vfconf__Formatter)
+      (visibility public)
+      (source
+       (path Formatter)
+       (intf (path formatter/formatter.mli))
+       (impl (path formatter/formatter.ml))))
+     (module
+      (obj_name vfconf__Include)
+      (visibility public)
+      (source
+       (path Include)
+       (intf (path config/include.mli))
+       (impl (path config/include.ml))))
+     (module
+      (obj_name vfconf__Keyword)
+      (visibility public)
+      (source
+       (path Keyword)
+       (intf (path lexer/keyword.mli))
+       (impl (path lexer/keyword.ml))))
+     (module
+      (obj_name vfconf__Lexer)
+      (visibility public)
+      (source (path Lexer) (impl (path lexer/lexer.ml))))
+     (module
+      (obj_name vfconf__Loader)
+      (visibility public)
+      (source
+       (path Loader)
+       (intf (path config/loader.mli))
+       (impl (path config/loader.ml))))
+     (module
+      (obj_name vfconf__Merge)
+      (visibility public)
+      (source
+       (path Merge)
+       (intf (path config/merge.mli))
+       (impl (path config/merge.ml))))
+     (module
+      (obj_name vfconf__Node)
+      (visibility public)
+      (source
+       (path Node)
+       (intf (path ast/node.mli))
+       (impl (path ast/node.ml))))
+     (module
+      (obj_name vfconf__Parse)
+      (visibility public)
+      (source
+       (path Parse)
+       (intf (path parser/parse.mli))
+       (impl (path parser/parse.ml))))
+     (module
+      (obj_name vfconf__Parser)
+      (visibility public)
+      (source
+       (path Parser)
+       (intf (path parser/parser.mli))
+       (impl (path parser/parser.ml))))
+     (module
+      (obj_name vfconf__Path)
+      (visibility public)
+      (source
+       (path Path)
+       (intf (path utils/path.mli))
+       (impl (path utils/path.ml))))
+     (module
+      (obj_name vfconf__Position)
+      (visibility public)
+      (source
+       (path Position)
+       (intf (path source/position.mli))
+       (impl (path source/position.ml))))
+     (module
+      (obj_name vfconf__Precedence)
+      (visibility public)
+      (source
+       (path Precedence)
+       (intf (path parser/precedence.mli))
+       (impl (path parser/precedence.ml))))
+     (module
+      (obj_name vfconf__Printer)
+      (visibility public)
+      (source
+       (path Printer)
+       (intf (path formatter/printer.mli))
+       (impl (path formatter/printer.ml))))
+     (module
+      (obj_name vfconf__Reference)
+      (visibility public)
+      (source
+       (path Reference)
+       (intf (path evaluator/reference.mli))
+       (impl (path evaluator/reference.ml))))
+     (module
+      (obj_name vfconf__Reporter)
+      (visibility public)
+      (source
+       (path Reporter)
+       (intf (path diagnostics/reporter.mli))
+       (impl (path diagnostics/reporter.ml))))
+     (module
+      (obj_name vfconf__Resolver)
+      (visibility public)
+      (source
+       (path Resolver)
+       (intf (path semantic/resolver.mli))
+       (impl (path semantic/resolver.ml))))
+     (module
+      (obj_name vfconf__Rule)
+      (visibility public)
+      (source
+       (path Rule)
+       (intf (path schema/rule.mli))
+       (impl (path schema/rule.ml))))
+     (module
+      (obj_name vfconf__Schema)
+      (visibility public)
+      (source
+       (path Schema)
+       (intf (path schema/schema.mli))
+       (impl (path schema/schema.ml))))
+     (module
+      (obj_name vfconf__Source)
+      (visibility public)
+      (source
+       (path Source)
+       (intf (path source/source.mli))
+       (impl (path source/source.ml))))
+     (module
+      (obj_name vfconf__Span)
+      (visibility public)
+      (source
+       (path Span)
+       (intf (path source/span.mli))
+       (impl (path source/span.ml))))
+     (module
+      (obj_name vfconf__Statement)
+      (visibility public)
+      (source
+       (path Statement)
+       (intf (path ast/statement.mli))
+       (impl (path ast/statement.ml))))
+     (module
+      (obj_name vfconf__String_utils)
+      (visibility public)
+      (source
+       (path String_utils)
+       (intf (path utils/string_utils.mli))
+       (impl (path utils/string_utils.ml))))
+     (module
+      (obj_name vfconf__Token)
+      (visibility public)
+      (source
+       (path Token)
+       (intf (path lexer/token.mli))
+       (impl (path lexer/token.ml))))
+     (module
+      (obj_name vfconf__Validator)
+      (visibility public)
+      (source
+       (path Validator)
+       (intf (path semantic/validator.mli))
+       (impl (path semantic/validator.ml))))
+     (module
+      (obj_name vfconf__Value)
+      (visibility public)
+      (source
+       (path Value)
+       (intf (path ast/value.mli))
+       (impl (path ast/value.ml))))
+     (module
+      (obj_name vfconf__Warning)
+      (visibility public)
+      (source
+       (path Warning)
+       (intf (path diagnostics/warning.mli))
+       (impl (path diagnostics/warning.ml))))))
+   (wrapped true))))

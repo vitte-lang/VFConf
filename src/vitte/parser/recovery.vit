@@ -1,5 +1,0 @@
-space ucl/parser/recovery
-
-proc sync()
-  # error recovery strategy
-.end

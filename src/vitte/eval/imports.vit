@@ -1,6 +1,0 @@
-space ucl/eval/imports
-
-proc load(path String) -> String
-  # file loading stub
-  ret ""
-.end

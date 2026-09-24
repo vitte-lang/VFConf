@@ -1,5 +1,0 @@
-space ucl/eval/macros
-
-proc expand_macro(name String)
-  # macro expansion
-.end

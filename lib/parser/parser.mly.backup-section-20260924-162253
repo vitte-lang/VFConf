@@ -1,0 +1,800 @@
+%{
+(*
+ * VFConf - Vitte Foundation Configuration Language
+ * lib/parser/parser.mly
+ *
+ * Canonical Menhir grammar.
+ *)
+
+let node_position (position : Lexing.position) : Node.position =
+  {
+    offset = position.Lexing.pos_cnum;
+    line = position.Lexing.pos_lnum;
+    column =
+      position.Lexing.pos_cnum
+      - position.Lexing.pos_bol;
+  }
+
+let span start_position end_position =
+  let filename =
+    if start_position.Lexing.pos_fname <> "" then
+      start_position.Lexing.pos_fname
+    else
+      end_position.Lexing.pos_fname
+  in
+
+  Node.span
+      ~filename
+      (node_position start_position)
+      (node_position end_position)
+
+let located start_position end_position value =
+  Node.located
+    (span start_position end_position)
+    value
+
+let object_entry key value start_position end_position =
+  {
+    Value.key;
+    value;
+    span = span start_position end_position;
+  }
+
+let hex_digit_value character =
+  match character with
+  | '0' .. '9' ->
+      Char.code character - Char.code '0'
+  | 'a' .. 'f' ->
+      10 + Char.code character - Char.code 'a'
+  | 'A' .. 'F' ->
+      10 + Char.code character - Char.code 'A'
+  | _ ->
+      invalid_arg "hex_digit_value"
+
+let expand_hex_digit character =
+  let value = hex_digit_value character in
+  (value lsl 4) lor value
+
+let parse_hex_byte string offset =
+  (hex_digit_value string.[offset] lsl 4)
+  lor hex_digit_value string.[offset + 1]
+
+let color_of_hex string =
+  let value =
+    if String.length string > 0 && string.[0] = '#' then
+      String.sub string 1 (String.length string - 1)
+    else
+      string
+  in
+
+  match String.length value with
+  | 3 ->
+      Value.Rgb
+        {
+          red = expand_hex_digit value.[0];
+          green = expand_hex_digit value.[1];
+          blue = expand_hex_digit value.[2];
+        }
+
+  | 4 ->
+      Value.Rgba
+        {
+          red = expand_hex_digit value.[0];
+          green = expand_hex_digit value.[1];
+          blue = expand_hex_digit value.[2];
+          alpha =
+            float_of_int (expand_hex_digit value.[3])
+            /. 255.0;
+        }
+
+  | 6 ->
+      Value.Rgb
+        {
+          red = parse_hex_byte value 0;
+          green = parse_hex_byte value 2;
+          blue = parse_hex_byte value 4;
+        }
+
+  | 8 ->
+      Value.Rgba
+        {
+          red = parse_hex_byte value 0;
+          green = parse_hex_byte value 2;
+          blue = parse_hex_byte value 4;
+          alpha =
+            float_of_int (parse_hex_byte value 6)
+            /. 255.0;
+        }
+
+  | _ ->
+      invalid_arg "color_of_hex"
+
+let int_of_int64_checked value =
+  if
+    Int64.compare value (Int64.of_int max_int) > 0
+    || Int64.compare value (Int64.of_int min_int) < 0
+  then
+    invalid_arg "integer outside OCaml int range"
+  else
+    Int64.to_int value
+
+let alpha_of_value value =
+  match value.Node.value with
+  | Value.Float value ->
+      value
+  | Value.Integer value ->
+      Int64.to_float value
+  | _ ->
+      invalid_arg "RGBA alpha must be numeric"
+
+let rgb_component value =
+  match value.Node.value with
+  | Value.Integer value ->
+      let value = int_of_int64_checked value in
+      if value < 0 || value > 255 then
+        invalid_arg "RGB component outside 0..255";
+      value
+  | _ ->
+      invalid_arg "RGB component must be an integer"
+
+let rgba_alpha value =
+  let value = alpha_of_value value in
+  if value < 0.0 || value > 1.0 then
+    invalid_arg "RGBA alpha outside 0.0..1.0";
+  value
+%}
+
+%token INCLUDE
+%token DEFINE
+%token WHEN
+%token ELSE
+
+%token <string> IDENTIFIER
+%token <string> STRING
+%token <int64> INTEGER
+%token <float> FLOAT
+%token <bool> BOOLEAN
+%token NULL
+%token <string> COLOR
+%token <float * Value.duration_unit> DURATION
+%token <float * Value.size_unit> SIZE
+
+%token RGB
+%token RGBA
+
+%token ASSIGN
+%token DEFINE_ASSIGN
+%token ADD_ASSIGN
+%token SUB_ASSIGN
+
+%token EQEQ
+%token NEQ
+%token LT
+%token LTE
+%token GT
+%token GTE
+
+%token AND
+%token OR
+%token NOT
+
+%token LBRACKET
+%token RBRACKET
+%token LBRACE
+%token RBRACE
+%token LPAREN
+%token RPAREN
+
+%token COMMA
+%token COLON
+%token SEMICOLON
+%token DOT
+%token DOLLAR
+%token NEWLINE
+
+%token EOF
+
+%start <Statement.t Node.t list> document
+
+%right OR
+%right AND
+%right NOT
+
+%%
+
+document:
+  separators statements EOF
+    {
+      $2
+    }
+;
+
+statements:
+  /* empty */
+    {
+      []
+    }
+
+| statement statements_tail
+    {
+      $1 :: $2
+    }
+;
+
+statements_tail:
+  /* empty */
+    {
+      []
+    }
+
+| separators1
+    {
+      []
+    }
+
+| separators1 statement statements_tail
+    {
+      $2 :: $3
+    }
+;
+
+separators:
+  /* empty */
+    {
+      ()
+    }
+
+| separators separator
+    {
+      ()
+    }
+;
+
+separators1:
+  separator
+    {
+      ()
+    }
+
+| separators1 separator
+    {
+      ()
+    }
+;
+
+separator:
+  NEWLINE
+    {
+      ()
+    }
+
+| SEMICOLON
+    {
+      ()
+    }
+;
+
+statement:
+  assignment
+    {
+      located $startpos $endpos
+        (Statement.Assignment $1)
+    }
+
+| include_statement
+    {
+      located $startpos $endpos
+        (Statement.Include $1)
+    }
+
+| define_statement
+    {
+      located $startpos $endpos
+        (Statement.Define $1)
+    }
+
+| section
+    {
+      located $startpos $endpos
+        (Statement.Section $1)
+    }
+
+| conditional
+    {
+      located $startpos $endpos
+        (Statement.Conditional $1)
+    }
+;
+
+assignment:
+  path assignment_operator value
+    {
+      {
+        Statement.key = $1;
+        operator = $2;
+        value = $3;
+      }
+    }
+;
+
+assignment_operator:
+  ASSIGN
+    {
+      Statement.Assign
+    }
+
+| DEFINE_ASSIGN
+    {
+      Statement.Define_assign
+    }
+
+| ADD_ASSIGN
+    {
+      Statement.Add_assign
+    }
+
+| SUB_ASSIGN
+    {
+      Statement.Sub_assign
+    }
+;
+
+include_statement:
+  INCLUDE STRING
+    {
+      {
+        Statement.path = $2;
+      }
+    }
+;
+
+define_statement:
+  DEFINE IDENTIFIER ASSIGN value
+    {
+      {
+        Statement.name = $2;
+        value = $4;
+      }
+    }
+
+| DEFINE IDENTIFIER DEFINE_ASSIGN value
+    {
+      {
+        Statement.name = $2;
+        value = $4;
+      }
+    }
+;
+
+section:
+  LBRACKET path RBRACKET
+    {
+      {
+        Statement.name = $2;
+        body = [];
+      }
+    }
+
+| LBRACKET path RBRACKET
+  separators
+  LBRACE
+  block_statements
+  RBRACE
+    {
+      {
+        Statement.name = $2;
+        body = $6;
+      }
+    }
+;
+
+conditional:
+  WHEN condition
+  separators
+  LBRACE
+  block_statements
+  RBRACE
+    {
+      {
+        Statement.condition = $2;
+        then_branch = $5;
+        else_branch = None;
+      }
+    }
+
+| WHEN condition
+  separators
+  LBRACE
+  block_statements
+  RBRACE
+  separators
+  ELSE
+  separators
+  LBRACE
+  block_statements
+  RBRACE
+    {
+      {
+        Statement.condition = $2;
+        then_branch = $5;
+        else_branch = Some $11;
+      }
+    }
+;
+
+block_statements:
+  separators statements_before_rbrace
+    {
+      $2
+    }
+;
+
+statements_before_rbrace:
+  /* empty */
+    {
+      []
+    }
+
+| statement block_statement_tail
+    {
+      $1 :: $2
+    }
+;
+
+block_statement_tail:
+  /* empty */
+    {
+      []
+    }
+
+| separators1
+    {
+      []
+    }
+
+| separators1 statement block_statement_tail
+    {
+      $2 :: $3
+    }
+;
+
+path:
+  IDENTIFIER
+    {
+      [$1]
+    }
+
+| IDENTIFIER DOT path
+    {
+      $1 :: $3
+    }
+;
+
+reference:
+  DOLLAR path
+    {
+      $2
+    }
+;
+
+value:
+  STRING
+    {
+      located $startpos $endpos
+        (Value.String $1)
+    }
+
+| INTEGER
+    {
+      located $startpos $endpos
+        (Value.Integer $1)
+    }
+
+| FLOAT
+    {
+      located $startpos $endpos
+        (Value.Float $1)
+    }
+
+| BOOLEAN
+    {
+      located $startpos $endpos
+        (Value.Boolean $1)
+    }
+
+| NULL
+    {
+      located $startpos $endpos
+        Value.Null
+    }
+
+| reference
+    {
+      located $startpos $endpos
+        (Value.Reference $1)
+    }
+
+| COLOR
+    {
+      located $startpos $endpos
+        (Value.Color (color_of_hex $1))
+    }
+
+| DURATION
+    {
+      let amount, unit = $1 in
+      located $startpos $endpos
+        (Value.Duration (amount, unit))
+    }
+
+| SIZE
+    {
+      let amount, unit = $1 in
+      located $startpos $endpos
+        (Value.Size (amount, unit))
+    }
+
+| array
+    {
+      located $startpos $endpos
+        (Value.Array $1)
+    }
+
+| object_value
+    {
+      located $startpos $endpos
+        (Value.Object $1)
+    }
+
+| RGB LPAREN INTEGER COMMA INTEGER COMMA INTEGER RPAREN
+    {
+      let red = int_of_int64_checked $3 in
+      let green = int_of_int64_checked $5 in
+      let blue = int_of_int64_checked $7 in
+
+      if
+        red < 0 || red > 255
+        || green < 0 || green > 255
+        || blue < 0 || blue > 255
+      then
+        invalid_arg "RGB component outside 0..255";
+
+      located $startpos $endpos
+        (Value.Color
+           (Value.Rgb
+              {
+                red;
+                green;
+                blue;
+              }))
+    }
+
+| RGBA LPAREN INTEGER COMMA INTEGER COMMA INTEGER COMMA numeric_value RPAREN
+    {
+      let red = int_of_int64_checked $3 in
+      let green = int_of_int64_checked $5 in
+      let blue = int_of_int64_checked $7 in
+      let alpha = alpha_of_value $9 in
+
+      if
+        red < 0 || red > 255
+        || green < 0 || green > 255
+        || blue < 0 || blue > 255
+      then
+        invalid_arg "RGBA component outside 0..255";
+
+      if alpha < 0.0 || alpha > 1.0 then
+        invalid_arg "RGBA alpha outside 0.0..1.0";
+
+      located $startpos $endpos
+        (Value.Color
+           (Value.Rgba
+              {
+                red;
+                green;
+                blue;
+                alpha;
+              }))
+    }
+;
+
+numeric_value:
+  INTEGER
+    {
+      located $startpos $endpos
+        (Value.Integer $1)
+    }
+
+| FLOAT
+    {
+      located $startpos $endpos
+        (Value.Float $1)
+    }
+;
+
+array:
+  LBRACKET separators RBRACKET
+    {
+      []
+    }
+
+| LBRACKET separators array_elements separators RBRACKET
+    {
+      $3
+    }
+;
+
+array_elements:
+  value
+    {
+      [$1]
+    }
+
+| value separators COMMA separators array_elements
+    {
+      $1 :: $5
+    }
+
+| value separators COMMA
+    {
+      [$1]
+    }
+;
+
+object_value:
+  LBRACE separators RBRACE
+    {
+      []
+    }
+
+| LBRACE separators object_entries separators RBRACE
+    {
+      $3
+    }
+;
+
+object_entries:
+  object_entry
+    {
+      [$1]
+    }
+
+| object_entry separators COMMA separators object_entries
+    {
+      $1 :: $5
+    }
+
+| object_entry separators COMMA
+    {
+      [$1]
+    }
+;
+
+object_entry:
+  path COLON value
+    {
+      object_entry
+        $1
+        $3
+        $startpos
+        $endpos
+    }
+;
+
+condition:
+  condition_or
+    {
+      $1
+    }
+;
+
+condition_or:
+  condition_and
+    {
+      $1
+    }
+
+| condition_or OR condition_and
+    {
+      located $startpos $endpos
+        (Statement.Logical
+           {
+             left = $1;
+             operator = Statement.Or;
+             right = $3;
+           })
+    }
+;
+
+condition_and:
+  condition_not
+    {
+      $1
+    }
+
+| condition_and AND condition_not
+    {
+      located $startpos $endpos
+        (Statement.Logical
+           {
+             left = $1;
+             operator = Statement.And;
+             right = $3;
+           })
+    }
+;
+
+condition_not:
+  condition_primary
+    {
+      $1
+    }
+
+| NOT condition_not
+    {
+      located $startpos $endpos
+        (Statement.Not $2)
+    }
+;
+
+condition_primary:
+  BOOLEAN
+    {
+      located $startpos $endpos
+        (Statement.Boolean $1)
+    }
+
+| reference
+    {
+      located $startpos $endpos
+        (Statement.Reference $1)
+    }
+
+| reference comparison_operator value
+    {
+      located $startpos $endpos
+        (Statement.Compare
+           {
+             reference = $1;
+             operator = $2;
+             value = $3;
+           })
+    }
+
+| LPAREN condition RPAREN
+    {
+      $2
+    }
+;
+
+comparison_operator:
+  EQEQ
+    {
+      Statement.Equal
+    }
+
+| NEQ
+    {
+      Statement.Not_equal
+    }
+
+| LT
+    {
+      Statement.Less
+    }
+
+| LTE
+    {
+      Statement.Less_equal
+    }
+
+| GT
+    {
+      Statement.Greater
+    }
+
+| GTE
+    {
+      Statement.Greater_equal
+    }
+;

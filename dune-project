@@ -1,0 +1,31 @@
+(lang dune 3.17)
+
+(name vfconf)
+(version 0.1.0)
+
+(generate_opam_files false)
+
+(source
+ (github vitte-lang/vfconf))
+
+(license MIT)
+
+(authors "Vincent Rousseau")
+(maintainers "Vincent Rousseau")
+
+(package (name vfconf)
+ (synopsis "Vitte Foundation Configuration Language")
+ (description
+  "VFConf is the Vitte Foundation Configuration Language, a structured configuration language using the .vf.conf file extension.")
+ (depends
+  (ocaml (>= 5.1))
+  (dune (>= 3.17))
+  (menhir (>= 20231231)))
+ (tags
+  ("configuration"
+   "language"
+   "parser"
+   "vitte"
+   "vfconf")))
+
+(using menhir 2.1)

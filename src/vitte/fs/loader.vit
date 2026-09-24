@@ -1,9 +1,0 @@
-space ucl/fs/loader
-
-pull ucl/fs/paths
-pull ucl/fs/cache
-
-proc load_file(path String) -> String
-  # simplified loader (to replace with real IO)
-  ret ""
-.end

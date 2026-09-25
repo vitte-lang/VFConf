@@ -1,1 +1,1 @@
-bin/dump.ml: Array Fun Printf String Sys
+bin/dump.ml: Array Format Fun Lexing List Printf String Sys Vfconf

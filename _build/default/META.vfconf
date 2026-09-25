@@ -1,7 +1,0 @@
-version = "0.1.0"
-description = ""
-requires = "unix"
-archive(byte) = "vfconf.cma"
-archive(native) = "vfconf.cmxa"
-plugin(byte) = "vfconf.cma"
-plugin(native) = "vfconf.cmxs"

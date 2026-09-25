@@ -53,7 +53,7 @@ let empty_state ?filename () =
 (* ---------------------------------------------------------- *)
 
 let path_to_string path =
-  String.concat "." path
+  Config.string_of_path path
 
 let qualify prefix path =
   prefix @ path
@@ -200,26 +200,30 @@ let rec evaluate_value state value =
 
       Node.with_span
         value.Node.span
-        (Node.make (Value.Array values))
+        (Node.make
+           (Value.Array values))
 
   | Value.Object entries ->
       let entries =
         List.map
           (fun entry ->
             {
-              Value.key = entry.Value.key;
+              Value.key =
+                entry.Value.key;
               value =
                 evaluate_value
                   state
                   entry.Value.value;
-              span = entry.Value.span;
+              span =
+                entry.Value.span;
             })
           entries
       in
 
       Node.with_span
         value.Node.span
-        (Node.make (Value.Object entries))
+        (Node.make
+           (Value.Object entries))
 
   | Value.String _
   | Value.Integer _
@@ -259,7 +263,9 @@ let append_value left right =
         (Node.located
            (Node.merge left right)
            (Value.Integer
-              (Int64.add left_value right_value)))
+              (Int64.add
+                 left_value
+                 right_value)))
 
   | Value.Float left_value,
     Value.Float right_value ->
@@ -275,7 +281,8 @@ let append_value left right =
         (Node.located
            (Node.merge left right)
            (Value.Float
-              (Int64.to_float left_value +. right_value)))
+              (Int64.to_float left_value
+               +. right_value)))
 
   | Value.Float left_value,
     Value.Integer right_value ->
@@ -283,7 +290,8 @@ let append_value left right =
         (Node.located
            (Node.merge left right)
            (Value.Float
-              (left_value +. Int64.to_float right_value)))
+              (left_value
+               +. Int64.to_float right_value)))
 
   | _ ->
       None
@@ -296,7 +304,9 @@ let subtract_value left right =
         (Node.located
            (Node.merge left right)
            (Value.Integer
-              (Int64.sub left_value right_value)))
+              (Int64.sub
+                 left_value
+                 right_value)))
 
   | Value.Float left_value,
     Value.Float right_value ->
@@ -312,7 +322,8 @@ let subtract_value left right =
         (Node.located
            (Node.merge left right)
            (Value.Float
-              (Int64.to_float left_value -. right_value)))
+              (Int64.to_float left_value
+               -. right_value)))
 
   | Value.Float left_value,
     Value.Integer right_value ->
@@ -320,7 +331,8 @@ let subtract_value left right =
         (Node.located
            (Node.merge left right)
            (Value.Float
-              (left_value -. Int64.to_float right_value)))
+              (left_value
+               -. Int64.to_float right_value)))
 
   | Value.Array left_values,
     Value.Array right_values ->
@@ -345,6 +357,15 @@ let subtract_value left right =
   | _ ->
       None
 
+let invalid_assignment path operator =
+  raise
+    (Evaluation_error
+       (Invalid_assignment
+          {
+            path;
+            operator;
+          }))
+
 let apply_assignment
     state
     path
@@ -363,13 +384,9 @@ let apply_assignment
 
   | Statement.Define_assign ->
       if Config.mem path state.config then
-        raise
-          (Evaluation_error
-             (Invalid_assignment
-                {
-                  path;
-                  operator;
-                }));
+        invalid_assignment
+          path
+          operator;
 
       {
         state with
@@ -384,14 +401,9 @@ let apply_assignment
       begin
         match Config.find_opt path state.config with
         | None ->
-            {
-              state with
-              config =
-                Config.set
-                  path
-                  value
-                  state.config;
-            }
+            invalid_assignment
+              path
+              operator
 
         | Some current ->
             begin
@@ -407,13 +419,9 @@ let apply_assignment
                   }
 
               | None ->
-                  raise
-                    (Evaluation_error
-                       (Invalid_assignment
-                          {
-                            path;
-                            operator;
-                          }))
+                  invalid_assignment
+                    path
+                    operator
             end
       end
 
@@ -421,13 +429,9 @@ let apply_assignment
       begin
         match Config.find_opt path state.config with
         | None ->
-            raise
-              (Evaluation_error
-                 (Invalid_assignment
-                    {
-                      path;
-                      operator;
-                    }))
+            invalid_assignment
+              path
+              operator
 
         | Some current ->
             begin
@@ -443,13 +447,9 @@ let apply_assignment
                   }
 
               | None ->
-                  raise
-                    (Evaluation_error
-                       (Invalid_assignment
-                          {
-                            path;
-                            operator;
-                          }))
+                  invalid_assignment
+                    path
+                    operator
             end
       end
 
@@ -457,9 +457,10 @@ let apply_assignment
 (* Conditions                                                 *)
 (* ---------------------------------------------------------- *)
 
-let evaluate_condition state condition =
+let evaluate_condition prefix state condition =
   try
     Condition.evaluate
+      prefix
       state.config
       condition
   with
@@ -522,20 +523,21 @@ and evaluate_statement
       }
 
   | Statement.Section section ->
-      let prefix =
+      let section_prefix =
         qualify
           prefix
           section.Statement.name
       in
 
       evaluate_statements
-        prefix
+        section_prefix
         state
         section.Statement.body
 
   | Statement.Conditional conditional ->
       if
         evaluate_condition
+          prefix
           state
           conditional.Statement.condition
       then
@@ -610,27 +612,16 @@ let evaluate_with_diagnostics
 (* Error conversion                                           *)
 (* ---------------------------------------------------------- *)
 
-let string_of_assignment_operator = function
-  | Statement.Assign ->
-      "="
-
-  | Statement.Define_assign ->
-      ":="
-
-  | Statement.Add_assign ->
-      "+="
-
-  | Statement.Sub_assign ->
-      "-="
+let string_of_assignment_operator operator =
+  Statement.string_of_assignment_operator
+    operator
 
 let diagnostic_of_error ?span = function
   | Duplicate_definition name ->
-      Error.invalid_value
+      Warning.duplicate_definition
         ?span
-        (Printf.sprintf
-           "definition '%s' is already defined"
-           name)
-      |> Error.to_diagnostic
+        name
+      |> Warning.to_diagnostic
 
   | Undefined_definition name ->
       Error.undefined_reference
@@ -649,7 +640,8 @@ let diagnostic_of_error ?span = function
         ?span
         ~key:(path_to_string path)
         ~operator:
-          (string_of_assignment_operator operator)
+          (string_of_assignment_operator
+             operator)
         ()
       |> Error.to_diagnostic
 
@@ -687,11 +679,13 @@ let string_of_error = function
   | Invalid_assignment { path; operator } ->
       Printf.sprintf
         "invalid assignment '%s' for configuration key '%s'"
-        (string_of_assignment_operator operator)
+        (string_of_assignment_operator
+           operator)
         (path_to_string path)
 
   | Invalid_condition error ->
-      Condition.string_of_error error
+      Condition.string_of_error
+        error
 
   | Unsupported_statement message ->
       message

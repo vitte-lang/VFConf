@@ -1,1 +1,0 @@
-../../../../../default/lib/diagnostics/warning.mli

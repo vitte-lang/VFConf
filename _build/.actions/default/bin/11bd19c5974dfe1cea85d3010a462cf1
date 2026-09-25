@@ -1,0 +1,1 @@
+bin/diagnostics.ml: Array Fun Printf Sys Vfconf

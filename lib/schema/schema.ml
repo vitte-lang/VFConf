@@ -558,6 +558,7 @@ let relative_field_name section entry =
   match drop section_length entry.Config.path with
   | [field] ->
       Some field
+
   | _ ->
       None
 
@@ -760,6 +761,7 @@ let merge_section left right =
         match right.description with
         | Some _ ->
             right.description
+
         | None ->
             left.description
       end;
@@ -792,6 +794,7 @@ let merge left right =
         match right.version with
         | Some _ ->
             right.version
+
         | None ->
             left.version
       end;
@@ -801,6 +804,7 @@ let merge left right =
         match right.description with
         | Some _ ->
             right.description
+
         | None ->
             left.description
       end;
@@ -841,7 +845,7 @@ let string_of_error = function
         Config.string_of_path section
       in
 
-      if section = "" then
+      if String.equal section "" then
         Printf.sprintf
           "duplicate schema field '%s'"
           field
@@ -861,7 +865,7 @@ let string_of_error = function
         Config.string_of_path section
       in
 
-      if section = "" then
+      if String.equal section "" then
         Printf.sprintf
           "unknown schema field '%s'"
           field
@@ -873,6 +877,59 @@ let string_of_error = function
 
   | Invalid_schema message ->
       "invalid schema: " ^ message
+
+(* ---------------------------------------------------------- *)
+(* Canonical diagnostics                                      *)
+(* ---------------------------------------------------------- *)
+
+let diagnostic_of_error error =
+  let canonical =
+    match error with
+    | Unknown_field { section; field } ->
+        let path =
+          field_path
+            section
+            field
+          |> Config.string_of_path
+        in
+
+        Error.make
+          (Error.Unknown_field path)
+
+    | Duplicate_section path ->
+        Error.make
+          (Error.Schema_violation
+             (Printf.sprintf
+                "duplicate schema section '%s'"
+                (Config.string_of_path path)))
+
+    | Duplicate_field { section; field } ->
+        let path =
+          field_path
+            section
+            field
+          |> Config.string_of_path
+        in
+
+        Error.make
+          (Error.Schema_violation
+             (Printf.sprintf
+                "duplicate schema field '%s'"
+                path))
+
+    | Unknown_section path ->
+        Error.make
+          (Error.Schema_violation
+             (Printf.sprintf
+                "unknown schema section '%s'"
+                (Config.string_of_path path)))
+
+    | Invalid_schema message ->
+        Error.make
+          (Error.Schema_violation message)
+  in
+
+  Error.to_diagnostic canonical
 
 let pp_error formatter error =
   Format.pp_print_string
@@ -893,6 +950,7 @@ let pp_section formatter section =
     match section.description with
     | None ->
         ()
+
     | Some description ->
         Format.fprintf
           formatter
@@ -923,6 +981,7 @@ let pp formatter schema =
     match schema.version with
     | None ->
         ()
+
     | Some version ->
         Format.fprintf
           formatter
@@ -934,6 +993,7 @@ let pp formatter schema =
     match schema.description with
     | None ->
         ()
+
     | Some description ->
         Format.fprintf
           formatter

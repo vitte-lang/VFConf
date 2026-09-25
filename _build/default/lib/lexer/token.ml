@@ -74,6 +74,61 @@ type t =
 type located = t Node.t
 
 (* ---------------------------------------------------------- *)
+(* Menhir token conversion                                    *)
+(* ---------------------------------------------------------- *)
+
+let of_parser_token = function
+  | Parser.INCLUDE -> Include
+  | Parser.DEFINE -> Define
+  | Parser.WHEN -> When
+  | Parser.ELSE -> Else
+
+  | Parser.IDENTIFIER value -> Identifier value
+  | Parser.STRING value -> String value
+  | Parser.INTEGER value -> Integer value
+  | Parser.FLOAT value -> Float value
+  | Parser.BOOLEAN value -> Boolean value
+  | Parser.NULL -> Null
+  | Parser.COLOR value -> Color value
+  | Parser.DURATION (value, unit) -> Duration (value, unit)
+  | Parser.SIZE (value, unit) -> Size (value, unit)
+
+  | Parser.RGB -> Rgb
+  | Parser.RGBA -> Rgba
+
+  | Parser.ASSIGN -> Assign
+  | Parser.DEFINE_ASSIGN -> Define_assign
+  | Parser.ADD_ASSIGN -> Add_assign
+  | Parser.SUB_ASSIGN -> Sub_assign
+
+  | Parser.EQEQ -> Equal
+  | Parser.NEQ -> Not_equal
+  | Parser.LT -> Less
+  | Parser.LTE -> Less_equal
+  | Parser.GT -> Greater
+  | Parser.GTE -> Greater_equal
+
+  | Parser.AND -> And
+  | Parser.OR -> Or
+  | Parser.NOT -> Not
+
+  | Parser.LBRACKET -> Left_bracket
+  | Parser.RBRACKET -> Right_bracket
+  | Parser.LBRACE -> Left_brace
+  | Parser.RBRACE -> Right_brace
+  | Parser.LPAREN -> Left_parenthesis
+  | Parser.RPAREN -> Right_parenthesis
+
+  | Parser.COMMA -> Comma
+  | Parser.COLON -> Colon
+  | Parser.SEMICOLON -> Semicolon
+  | Parser.DOT -> Dot
+  | Parser.DOLLAR -> Dollar
+
+  | Parser.NEWLINE -> Newline
+  | Parser.EOF -> Eof
+
+(* ---------------------------------------------------------- *)
 (* Classification                                             *)
 (* ---------------------------------------------------------- *)
 

@@ -1,13 +1,45 @@
 (executables
-(names
-main
-check
-dump
-fmt)
-(public_names
-vfconf
-vfconf-check
-vfconf-dump
-vfconf-fmt)
-(libraries
-vfconf))
+ (names
+  main
+  check
+  dump
+  fmt
+  fmt_all
+  get
+  set_cmd
+  unset
+  exists
+  list_cmd
+  tree_cmd
+  diff_cmd
+  merge_cmd
+  resolve_cmd
+  eval_cmd
+  query_cmd
+  diagnostics
+  explain
+  stats
+  check_all)
+ (public_names
+  vfconf
+  vfconf-check
+  vfconf-dump
+  vfconf-fmt
+  vfconf-fmt-all
+  vfconf-get
+  vfconf-set
+  vfconf-unset
+  vfconf-exists
+  vfconf-list
+  vfconf-tree
+  vfconf-diff
+  vfconf-merge
+  vfconf-resolve
+  vfconf-eval
+  vfconf-query
+  vfconf-diagnostics
+  vfconf-explain
+  vfconf-stats
+  vfconf-check-all)
+ (libraries
+  vfconf))

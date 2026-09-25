@@ -9,25 +9,59 @@
 
 open Parser
 
+type error_kind =
+  | Unexpected_character of char
+  | Invalid_token of string
+  | Unterminated_string
+  | Unterminated_comment
+  | Invalid_escape of string
+  | Invalid_number of string
+  | Invalid_color of string
+  | Invalid_duration of string
+  | Invalid_size of string
+
 exception Error of {
-  message : string;
+  kind : error_kind;
   start_pos : Lexing.position;
   end_pos : Lexing.position;
 }
 
-let error lexbuf message =
+let error lexbuf kind =
   raise
     (Error
        {
-         message;
+         kind;
          start_pos = Lexing.lexeme_start_p lexbuf;
          end_pos = Lexing.lexeme_end_p lexbuf;
        })
+
+let message_of_error_kind = function
+  | Unexpected_character character ->
+      Printf.sprintf "unexpected character '%c'" character
+  | Invalid_token token ->
+      Printf.sprintf "invalid token '%s'" token
+  | Unterminated_string ->
+      "unterminated string literal"
+  | Unterminated_comment ->
+      "unterminated block comment"
+  | Invalid_escape escape ->
+      Printf.sprintf "invalid escape sequence '%s'" escape
+  | Invalid_number value ->
+      Printf.sprintf "invalid number literal '%s'" value
+  | Invalid_color value ->
+      Printf.sprintf "invalid color literal '%s'" value
+  | Invalid_duration value ->
+      Printf.sprintf "invalid duration literal '%s'" value
+  | Invalid_size value ->
+      Printf.sprintf "invalid size literal '%s'" value
 
 let newline lexbuf =
   Lexing.new_line lexbuf
 
 let buffer = Buffer.create 128
+
+let string_start_position =
+  ref Lexing.dummy_pos
 
 let reset_buffer () =
   Buffer.clear buffer
@@ -93,7 +127,7 @@ let parse_unicode_escape lexbuf value =
   | Invalid_argument _
   | Failure _ ->
       error lexbuf
-        ("invalid Unicode escape '\\u" ^ value ^ "'")
+        (Invalid_escape ("\\u" ^ value))
 
 let remove_underscores value =
   String.concat "" (String.split_on_char '_' value)
@@ -102,31 +136,31 @@ let parse_integer lexbuf value =
   try
     Int64.of_string (remove_underscores value)
   with Failure _ ->
-    error lexbuf ("invalid integer literal '" ^ value ^ "'")
+    error lexbuf (Invalid_number value)
 
 let parse_float lexbuf value =
   try
     float_of_string (remove_underscores value)
   with Failure _ ->
-    error lexbuf ("invalid floating-point literal '" ^ value ^ "'")
+    error lexbuf (Invalid_number value)
 
 let parse_hex_integer lexbuf value =
   try
     Int64.of_string (remove_underscores value)
   with Failure _ ->
-    error lexbuf ("invalid hexadecimal integer literal '" ^ value ^ "'")
+    error lexbuf (Invalid_number value)
 
 let parse_binary_integer lexbuf value =
   try
     Int64.of_string (remove_underscores value)
   with Failure _ ->
-    error lexbuf ("invalid binary integer literal '" ^ value ^ "'")
+    error lexbuf (Invalid_number value)
 
 let parse_octal_integer lexbuf value =
   try
     Int64.of_string (remove_underscores value)
   with Failure _ ->
-    error lexbuf ("invalid octal integer literal '" ^ value ^ "'")
+    error lexbuf (Invalid_number value)
 
 let keyword_or_identifier value =
   match Keyword.of_string value with
@@ -167,7 +201,7 @@ let parse_color lexbuf value =
   then
     COLOR value
   else
-    error lexbuf ("invalid color literal '" ^ value ^ "'")
+    error lexbuf (Invalid_color value)
 
 let parse_duration lexbuf number unit_ =
   let amount =
@@ -183,7 +217,7 @@ let parse_size lexbuf number unit_ =
 
 let comment_depth = ref 0
 
-# 187 "lib/lexer/lexer.ml"
+# 221 "lib/lexer/lexer.ml"
 let __ocaml_lex_tables = {
   Lexing.lex_base =
    "\000\000\204\255\205\255\081\000\158\000\195\000\226\255\227\255\
@@ -621,507 +655,506 @@ let rec token lexbuf =
 and __ocaml_lex_token_rec lexbuf __ocaml_lex_state =
   match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 242 "lib/lexer/lexer.mll"
+# 276 "lib/lexer/lexer.mll"
       (
         token lexbuf
       )
-# 629 "lib/lexer/lexer.ml"
+# 663 "lib/lexer/lexer.ml"
 
   | 1 ->
-# 247 "lib/lexer/lexer.mll"
+# 281 "lib/lexer/lexer.mll"
       (
         newline lexbuf;
         NEWLINE
       )
-# 637 "lib/lexer/lexer.ml"
+# 671 "lib/lexer/lexer.ml"
 
   | 2 ->
-# 253 "lib/lexer/lexer.mll"
+# 287 "lib/lexer/lexer.mll"
       (
         token lexbuf
       )
-# 644 "lib/lexer/lexer.ml"
+# 678 "lib/lexer/lexer.ml"
 
   | 3 ->
-# 258 "lib/lexer/lexer.mll"
+# 292 "lib/lexer/lexer.mll"
       (
         token lexbuf
       )
-# 651 "lib/lexer/lexer.ml"
+# 685 "lib/lexer/lexer.ml"
 
   | 4 ->
-# 263 "lib/lexer/lexer.mll"
+# 297 "lib/lexer/lexer.mll"
       (
         comment_depth := 1;
         block_comment lexbuf;
         token lexbuf
       )
-# 660 "lib/lexer/lexer.ml"
+# 694 "lib/lexer/lexer.ml"
 
   | 5 ->
-# 270 "lib/lexer/lexer.mll"
+# 304 "lib/lexer/lexer.mll"
       (
         EQEQ
       )
-# 667 "lib/lexer/lexer.ml"
+# 701 "lib/lexer/lexer.ml"
 
   | 6 ->
-# 275 "lib/lexer/lexer.mll"
+# 309 "lib/lexer/lexer.mll"
       (
         NEQ
       )
-# 674 "lib/lexer/lexer.ml"
+# 708 "lib/lexer/lexer.ml"
 
   | 7 ->
-# 280 "lib/lexer/lexer.mll"
+# 314 "lib/lexer/lexer.mll"
       (
         LTE
       )
-# 681 "lib/lexer/lexer.ml"
+# 715 "lib/lexer/lexer.ml"
 
   | 8 ->
-# 285 "lib/lexer/lexer.mll"
+# 319 "lib/lexer/lexer.mll"
       (
         GTE
       )
-# 688 "lib/lexer/lexer.ml"
+# 722 "lib/lexer/lexer.ml"
 
   | 9 ->
-# 290 "lib/lexer/lexer.mll"
+# 324 "lib/lexer/lexer.mll"
       (
         AND
       )
-# 695 "lib/lexer/lexer.ml"
+# 729 "lib/lexer/lexer.ml"
 
   | 10 ->
-# 295 "lib/lexer/lexer.mll"
+# 329 "lib/lexer/lexer.mll"
       (
         OR
       )
-# 702 "lib/lexer/lexer.ml"
+# 736 "lib/lexer/lexer.ml"
 
   | 11 ->
-# 300 "lib/lexer/lexer.mll"
+# 334 "lib/lexer/lexer.mll"
       (
         DEFINE_ASSIGN
       )
-# 709 "lib/lexer/lexer.ml"
+# 743 "lib/lexer/lexer.ml"
 
   | 12 ->
-# 305 "lib/lexer/lexer.mll"
+# 339 "lib/lexer/lexer.mll"
       (
         ADD_ASSIGN
       )
-# 716 "lib/lexer/lexer.ml"
+# 750 "lib/lexer/lexer.ml"
 
   | 13 ->
-# 310 "lib/lexer/lexer.mll"
+# 344 "lib/lexer/lexer.mll"
       (
         SUB_ASSIGN
       )
-# 723 "lib/lexer/lexer.ml"
+# 757 "lib/lexer/lexer.ml"
 
   | 14 ->
-# 315 "lib/lexer/lexer.mll"
+# 349 "lib/lexer/lexer.mll"
       (
         ASSIGN
       )
-# 730 "lib/lexer/lexer.ml"
+# 764 "lib/lexer/lexer.ml"
 
   | 15 ->
-# 320 "lib/lexer/lexer.mll"
+# 354 "lib/lexer/lexer.mll"
       (
         LT
       )
-# 737 "lib/lexer/lexer.ml"
+# 771 "lib/lexer/lexer.ml"
 
   | 16 ->
-# 325 "lib/lexer/lexer.mll"
+# 359 "lib/lexer/lexer.mll"
       (
         GT
       )
-# 744 "lib/lexer/lexer.ml"
+# 778 "lib/lexer/lexer.ml"
 
   | 17 ->
-# 330 "lib/lexer/lexer.mll"
+# 364 "lib/lexer/lexer.mll"
       (
         NOT
       )
-# 751 "lib/lexer/lexer.ml"
+# 785 "lib/lexer/lexer.ml"
 
   | 18 ->
-# 335 "lib/lexer/lexer.mll"
+# 369 "lib/lexer/lexer.mll"
       (
         LBRACKET
       )
-# 758 "lib/lexer/lexer.ml"
+# 792 "lib/lexer/lexer.ml"
 
   | 19 ->
-# 340 "lib/lexer/lexer.mll"
+# 374 "lib/lexer/lexer.mll"
       (
         RBRACKET
       )
-# 765 "lib/lexer/lexer.ml"
+# 799 "lib/lexer/lexer.ml"
 
   | 20 ->
-# 345 "lib/lexer/lexer.mll"
+# 379 "lib/lexer/lexer.mll"
       (
         LBRACE
       )
-# 772 "lib/lexer/lexer.ml"
+# 806 "lib/lexer/lexer.ml"
 
   | 21 ->
-# 350 "lib/lexer/lexer.mll"
+# 384 "lib/lexer/lexer.mll"
       (
         RBRACE
       )
-# 779 "lib/lexer/lexer.ml"
+# 813 "lib/lexer/lexer.ml"
 
   | 22 ->
-# 355 "lib/lexer/lexer.mll"
+# 389 "lib/lexer/lexer.mll"
       (
         LPAREN
       )
-# 786 "lib/lexer/lexer.ml"
+# 820 "lib/lexer/lexer.ml"
 
   | 23 ->
-# 360 "lib/lexer/lexer.mll"
+# 394 "lib/lexer/lexer.mll"
       (
         RPAREN
       )
-# 793 "lib/lexer/lexer.ml"
+# 827 "lib/lexer/lexer.ml"
 
   | 24 ->
-# 365 "lib/lexer/lexer.mll"
+# 399 "lib/lexer/lexer.mll"
       (
         COMMA
       )
-# 800 "lib/lexer/lexer.ml"
+# 834 "lib/lexer/lexer.ml"
 
   | 25 ->
-# 370 "lib/lexer/lexer.mll"
+# 404 "lib/lexer/lexer.mll"
       (
         COLON
       )
-# 807 "lib/lexer/lexer.ml"
+# 841 "lib/lexer/lexer.ml"
 
   | 26 ->
-# 375 "lib/lexer/lexer.mll"
+# 409 "lib/lexer/lexer.mll"
       (
         SEMICOLON
       )
-# 814 "lib/lexer/lexer.ml"
+# 848 "lib/lexer/lexer.ml"
 
   | 27 ->
-# 380 "lib/lexer/lexer.mll"
+# 414 "lib/lexer/lexer.mll"
       (
         DOT
       )
-# 821 "lib/lexer/lexer.ml"
+# 855 "lib/lexer/lexer.ml"
 
   | 28 ->
-# 385 "lib/lexer/lexer.mll"
+# 419 "lib/lexer/lexer.mll"
       (
         DOLLAR
       )
-# 828 "lib/lexer/lexer.ml"
+# 862 "lib/lexer/lexer.ml"
 
   | 29 ->
-# 390 "lib/lexer/lexer.mll"
+# 424 "lib/lexer/lexer.mll"
       (
         reset_buffer ();
+        string_start_position :=
+          Lexing.lexeme_start_p lexbuf;
         string_literal lexbuf
-      )
-# 836 "lib/lexer/lexer.ml"
-
-  | 30 ->
-let
-# 395 "lib/lexer/lexer.mll"
-                     value
-# 842 "lib/lexer/lexer.ml"
-= Lexing.sub_lexeme lexbuf lexbuf.Lexing.lex_start_pos lexbuf.Lexing.lex_curr_pos in
-# 396 "lib/lexer/lexer.mll"
-      (
-        parse_color lexbuf value
-      )
-# 848 "lib/lexer/lexer.ml"
-
-  | 31 ->
-let
-# 400 "lib/lexer/lexer.mll"
-                           value
-# 854 "lib/lexer/lexer.ml"
-= Lexing.sub_lexeme lexbuf lexbuf.Lexing.lex_start_pos lexbuf.Lexing.lex_curr_pos in
-# 401 "lib/lexer/lexer.mll"
-      (
-        INTEGER (parse_hex_integer lexbuf value)
-      )
-# 860 "lib/lexer/lexer.ml"
-
-  | 32 ->
-let
-# 405 "lib/lexer/lexer.mll"
-                      value
-# 866 "lib/lexer/lexer.ml"
-= Lexing.sub_lexeme lexbuf lexbuf.Lexing.lex_start_pos lexbuf.Lexing.lex_curr_pos in
-# 406 "lib/lexer/lexer.mll"
-      (
-        INTEGER (parse_binary_integer lexbuf value)
       )
 # 872 "lib/lexer/lexer.ml"
 
-  | 33 ->
+  | 30 ->
 let
-# 410 "lib/lexer/lexer.mll"
+# 431 "lib/lexer/lexer.mll"
                      value
 # 878 "lib/lexer/lexer.ml"
 = Lexing.sub_lexeme lexbuf lexbuf.Lexing.lex_start_pos lexbuf.Lexing.lex_curr_pos in
-# 411 "lib/lexer/lexer.mll"
+# 432 "lib/lexer/lexer.mll"
       (
-        INTEGER (parse_octal_integer lexbuf value)
+        parse_color lexbuf value
       )
 # 884 "lib/lexer/lexer.ml"
 
-  | 34 ->
+  | 31 ->
 let
-# 415 "lib/lexer/lexer.mll"
-                   value
+# 436 "lib/lexer/lexer.mll"
+                           value
 # 890 "lib/lexer/lexer.ml"
 = Lexing.sub_lexeme lexbuf lexbuf.Lexing.lex_start_pos lexbuf.Lexing.lex_curr_pos in
-# 416 "lib/lexer/lexer.mll"
+# 437 "lib/lexer/lexer.mll"
+      (
+        INTEGER (parse_hex_integer lexbuf value)
+      )
+# 896 "lib/lexer/lexer.ml"
+
+  | 32 ->
+let
+# 441 "lib/lexer/lexer.mll"
+                      value
+# 902 "lib/lexer/lexer.ml"
+= Lexing.sub_lexeme lexbuf lexbuf.Lexing.lex_start_pos lexbuf.Lexing.lex_curr_pos in
+# 442 "lib/lexer/lexer.mll"
+      (
+        INTEGER (parse_binary_integer lexbuf value)
+      )
+# 908 "lib/lexer/lexer.ml"
+
+  | 33 ->
+let
+# 446 "lib/lexer/lexer.mll"
+                     value
+# 914 "lib/lexer/lexer.ml"
+= Lexing.sub_lexeme lexbuf lexbuf.Lexing.lex_start_pos lexbuf.Lexing.lex_curr_pos in
+# 447 "lib/lexer/lexer.mll"
+      (
+        INTEGER (parse_octal_integer lexbuf value)
+      )
+# 920 "lib/lexer/lexer.ml"
+
+  | 34 ->
+let
+# 451 "lib/lexer/lexer.mll"
+                   value
+# 926 "lib/lexer/lexer.ml"
+= Lexing.sub_lexeme lexbuf lexbuf.Lexing.lex_start_pos lexbuf.Lexing.lex_curr_pos in
+# 452 "lib/lexer/lexer.mll"
       (
         let length = String.length value in
         let number = String.sub value 0 (length - 2) in
         parse_duration lexbuf number Value.Nanosecond
       )
-# 898 "lib/lexer/lexer.ml"
+# 934 "lib/lexer/lexer.ml"
 
   | 35 ->
 let
-# 422 "lib/lexer/lexer.mll"
+# 458 "lib/lexer/lexer.mll"
                    value
-# 904 "lib/lexer/lexer.ml"
+# 940 "lib/lexer/lexer.ml"
 = Lexing.sub_lexeme lexbuf lexbuf.Lexing.lex_start_pos lexbuf.Lexing.lex_curr_pos in
-# 423 "lib/lexer/lexer.mll"
+# 459 "lib/lexer/lexer.mll"
       (
         let length = String.length value in
         let number = String.sub value 0 (length - 2) in
         parse_duration lexbuf number Value.Microsecond
       )
-# 912 "lib/lexer/lexer.ml"
+# 948 "lib/lexer/lexer.ml"
 
   | 36 ->
 let
-# 429 "lib/lexer/lexer.mll"
+# 465 "lib/lexer/lexer.mll"
                    value
-# 918 "lib/lexer/lexer.ml"
+# 954 "lib/lexer/lexer.ml"
 = Lexing.sub_lexeme lexbuf lexbuf.Lexing.lex_start_pos lexbuf.Lexing.lex_curr_pos in
-# 430 "lib/lexer/lexer.mll"
+# 466 "lib/lexer/lexer.mll"
       (
         let length = String.length value in
         let number = String.sub value 0 (length - 2) in
         parse_duration lexbuf number Value.Millisecond
       )
-# 926 "lib/lexer/lexer.ml"
+# 962 "lib/lexer/lexer.ml"
 
   | 37 ->
 let
-# 436 "lib/lexer/lexer.mll"
+# 472 "lib/lexer/lexer.mll"
                     value
-# 932 "lib/lexer/lexer.ml"
+# 968 "lib/lexer/lexer.ml"
 = Lexing.sub_lexeme lexbuf lexbuf.Lexing.lex_start_pos lexbuf.Lexing.lex_curr_pos in
-# 437 "lib/lexer/lexer.mll"
+# 473 "lib/lexer/lexer.mll"
       (
         let length = String.length value in
         let number = String.sub value 0 (length - 3) in
         parse_duration lexbuf number Value.Minute
       )
-# 940 "lib/lexer/lexer.ml"
+# 976 "lib/lexer/lexer.ml"
 
   | 38 ->
 let
-# 443 "lib/lexer/lexer.mll"
+# 479 "lib/lexer/lexer.mll"
                   value
-# 946 "lib/lexer/lexer.ml"
+# 982 "lib/lexer/lexer.ml"
 = Lexing.sub_lexeme lexbuf lexbuf.Lexing.lex_start_pos lexbuf.Lexing.lex_curr_pos in
-# 444 "lib/lexer/lexer.mll"
+# 480 "lib/lexer/lexer.mll"
       (
         let length = String.length value in
         let number = String.sub value 0 (length - 1) in
         parse_duration lexbuf number Value.Hour
       )
-# 954 "lib/lexer/lexer.ml"
+# 990 "lib/lexer/lexer.ml"
 
   | 39 ->
 let
-# 450 "lib/lexer/lexer.mll"
+# 486 "lib/lexer/lexer.mll"
                   value
-# 960 "lib/lexer/lexer.ml"
+# 996 "lib/lexer/lexer.ml"
 = Lexing.sub_lexeme lexbuf lexbuf.Lexing.lex_start_pos lexbuf.Lexing.lex_curr_pos in
-# 451 "lib/lexer/lexer.mll"
+# 487 "lib/lexer/lexer.mll"
       (
         let length = String.length value in
         let number = String.sub value 0 (length - 1) in
         parse_duration lexbuf number Value.Second
       )
-# 968 "lib/lexer/lexer.ml"
+# 1004 "lib/lexer/lexer.ml"
 
   | 40 ->
 let
-# 457 "lib/lexer/lexer.mll"
+# 493 "lib/lexer/lexer.mll"
                     value
-# 974 "lib/lexer/lexer.ml"
+# 1010 "lib/lexer/lexer.ml"
 = Lexing.sub_lexeme lexbuf lexbuf.Lexing.lex_start_pos lexbuf.Lexing.lex_curr_pos in
-# 458 "lib/lexer/lexer.mll"
+# 494 "lib/lexer/lexer.mll"
       (
         let length = String.length value in
         let number = String.sub value 0 (length - 3) in
         parse_size lexbuf number Value.Kibibyte
       )
-# 982 "lib/lexer/lexer.ml"
+# 1018 "lib/lexer/lexer.ml"
 
   | 41 ->
 let
-# 464 "lib/lexer/lexer.mll"
+# 500 "lib/lexer/lexer.mll"
                     value
-# 988 "lib/lexer/lexer.ml"
+# 1024 "lib/lexer/lexer.ml"
 = Lexing.sub_lexeme lexbuf lexbuf.Lexing.lex_start_pos lexbuf.Lexing.lex_curr_pos in
-# 465 "lib/lexer/lexer.mll"
+# 501 "lib/lexer/lexer.mll"
       (
         let length = String.length value in
         let number = String.sub value 0 (length - 3) in
         parse_size lexbuf number Value.Mebibyte
       )
-# 996 "lib/lexer/lexer.ml"
+# 1032 "lib/lexer/lexer.ml"
 
   | 42 ->
 let
-# 471 "lib/lexer/lexer.mll"
+# 507 "lib/lexer/lexer.mll"
                     value
-# 1002 "lib/lexer/lexer.ml"
+# 1038 "lib/lexer/lexer.ml"
 = Lexing.sub_lexeme lexbuf lexbuf.Lexing.lex_start_pos lexbuf.Lexing.lex_curr_pos in
-# 472 "lib/lexer/lexer.mll"
+# 508 "lib/lexer/lexer.mll"
       (
         let length = String.length value in
         let number = String.sub value 0 (length - 3) in
         parse_size lexbuf number Value.Gibibyte
       )
-# 1010 "lib/lexer/lexer.ml"
+# 1046 "lib/lexer/lexer.ml"
 
   | 43 ->
 let
-# 478 "lib/lexer/lexer.mll"
+# 514 "lib/lexer/lexer.mll"
                    value
-# 1016 "lib/lexer/lexer.ml"
+# 1052 "lib/lexer/lexer.ml"
 = Lexing.sub_lexeme lexbuf lexbuf.Lexing.lex_start_pos lexbuf.Lexing.lex_curr_pos in
-# 479 "lib/lexer/lexer.mll"
+# 515 "lib/lexer/lexer.mll"
       (
         let length = String.length value in
         let number = String.sub value 0 (length - 2) in
         parse_size lexbuf number Value.Kilobyte
       )
-# 1024 "lib/lexer/lexer.ml"
+# 1060 "lib/lexer/lexer.ml"
 
   | 44 ->
 let
-# 485 "lib/lexer/lexer.mll"
+# 521 "lib/lexer/lexer.mll"
                    value
-# 1030 "lib/lexer/lexer.ml"
+# 1066 "lib/lexer/lexer.ml"
 = Lexing.sub_lexeme lexbuf lexbuf.Lexing.lex_start_pos lexbuf.Lexing.lex_curr_pos in
-# 486 "lib/lexer/lexer.mll"
+# 522 "lib/lexer/lexer.mll"
       (
         let length = String.length value in
         let number = String.sub value 0 (length - 2) in
         parse_size lexbuf number Value.Megabyte
       )
-# 1038 "lib/lexer/lexer.ml"
+# 1074 "lib/lexer/lexer.ml"
 
   | 45 ->
 let
-# 492 "lib/lexer/lexer.mll"
+# 528 "lib/lexer/lexer.mll"
                    value
-# 1044 "lib/lexer/lexer.ml"
+# 1080 "lib/lexer/lexer.ml"
 = Lexing.sub_lexeme lexbuf lexbuf.Lexing.lex_start_pos lexbuf.Lexing.lex_curr_pos in
-# 493 "lib/lexer/lexer.mll"
+# 529 "lib/lexer/lexer.mll"
       (
         let length = String.length value in
         let number = String.sub value 0 (length - 2) in
         parse_size lexbuf number Value.Gigabyte
       )
-# 1052 "lib/lexer/lexer.ml"
+# 1088 "lib/lexer/lexer.ml"
 
   | 46 ->
 let
-# 499 "lib/lexer/lexer.mll"
+# 535 "lib/lexer/lexer.mll"
                   value
-# 1058 "lib/lexer/lexer.ml"
+# 1094 "lib/lexer/lexer.ml"
 = Lexing.sub_lexeme lexbuf lexbuf.Lexing.lex_start_pos lexbuf.Lexing.lex_curr_pos in
-# 500 "lib/lexer/lexer.mll"
+# 536 "lib/lexer/lexer.mll"
       (
         let length = String.length value in
         let number = String.sub value 0 (length - 1) in
         parse_size lexbuf number Value.Byte
       )
-# 1066 "lib/lexer/lexer.ml"
+# 1102 "lib/lexer/lexer.ml"
 
   | 47 ->
 let
-# 506 "lib/lexer/lexer.mll"
+# 542 "lib/lexer/lexer.mll"
                      value
-# 1072 "lib/lexer/lexer.ml"
+# 1108 "lib/lexer/lexer.ml"
 = Lexing.sub_lexeme lexbuf lexbuf.Lexing.lex_start_pos lexbuf.Lexing.lex_curr_pos in
-# 507 "lib/lexer/lexer.mll"
+# 543 "lib/lexer/lexer.mll"
       (
         FLOAT (parse_float lexbuf value)
       )
-# 1078 "lib/lexer/lexer.ml"
+# 1114 "lib/lexer/lexer.ml"
 
   | 48 ->
 let
-# 511 "lib/lexer/lexer.mll"
+# 547 "lib/lexer/lexer.mll"
                        value
-# 1084 "lib/lexer/lexer.ml"
+# 1120 "lib/lexer/lexer.ml"
 = Lexing.sub_lexeme lexbuf lexbuf.Lexing.lex_start_pos lexbuf.Lexing.lex_curr_pos in
-# 512 "lib/lexer/lexer.mll"
+# 548 "lib/lexer/lexer.mll"
       (
         INTEGER (parse_integer lexbuf value)
       )
-# 1090 "lib/lexer/lexer.ml"
+# 1126 "lib/lexer/lexer.ml"
 
   | 49 ->
 let
-# 516 "lib/lexer/lexer.mll"
+# 552 "lib/lexer/lexer.mll"
                   value
-# 1096 "lib/lexer/lexer.ml"
+# 1132 "lib/lexer/lexer.ml"
 = Lexing.sub_lexeme lexbuf lexbuf.Lexing.lex_start_pos lexbuf.Lexing.lex_curr_pos in
-# 517 "lib/lexer/lexer.mll"
+# 553 "lib/lexer/lexer.mll"
       (
         keyword_or_identifier value
       )
-# 1102 "lib/lexer/lexer.ml"
+# 1138 "lib/lexer/lexer.ml"
 
   | 50 ->
-# 522 "lib/lexer/lexer.mll"
+# 558 "lib/lexer/lexer.mll"
       (
         EOF
       )
-# 1109 "lib/lexer/lexer.ml"
+# 1145 "lib/lexer/lexer.ml"
 
   | 51 ->
 let
-# 526 "lib/lexer/lexer.mll"
+# 562 "lib/lexer/lexer.mll"
          character
-# 1115 "lib/lexer/lexer.ml"
+# 1151 "lib/lexer/lexer.ml"
 = Lexing.sub_lexeme_char lexbuf lexbuf.Lexing.lex_start_pos in
-# 527 "lib/lexer/lexer.mll"
+# 563 "lib/lexer/lexer.mll"
       (
-        error
-          lexbuf
-          (Printf.sprintf
-             "unexpected character '%c'"
-             character)
+        error lexbuf
+          (Unexpected_character character)
       )
-# 1125 "lib/lexer/lexer.ml"
+# 1158 "lib/lexer/lexer.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf;
       __ocaml_lex_token_rec lexbuf __ocaml_lex_state
@@ -1131,134 +1164,134 @@ and string_literal lexbuf =
 and __ocaml_lex_string_literal_rec lexbuf __ocaml_lex_state =
   match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 537 "lib/lexer/lexer.mll"
+# 570 "lib/lexer/lexer.mll"
       (
+        lexbuf.Lexing.lex_start_p <-
+          !string_start_position;
         STRING (buffer_contents ())
       )
-# 1139 "lib/lexer/lexer.ml"
+# 1174 "lib/lexer/lexer.ml"
 
   | 1 ->
-# 542 "lib/lexer/lexer.mll"
+# 577 "lib/lexer/lexer.mll"
       (
         add_char '"';
         string_literal lexbuf
       )
-# 1147 "lib/lexer/lexer.ml"
+# 1182 "lib/lexer/lexer.ml"
 
   | 2 ->
-# 548 "lib/lexer/lexer.mll"
+# 583 "lib/lexer/lexer.mll"
       (
         add_char '\\';
         string_literal lexbuf
       )
-# 1155 "lib/lexer/lexer.ml"
+# 1190 "lib/lexer/lexer.ml"
 
   | 3 ->
-# 554 "lib/lexer/lexer.mll"
+# 589 "lib/lexer/lexer.mll"
       (
         add_char '\n';
         string_literal lexbuf
       )
-# 1163 "lib/lexer/lexer.ml"
+# 1198 "lib/lexer/lexer.ml"
 
   | 4 ->
-# 560 "lib/lexer/lexer.mll"
+# 595 "lib/lexer/lexer.mll"
       (
         add_char '\r';
         string_literal lexbuf
       )
-# 1171 "lib/lexer/lexer.ml"
+# 1206 "lib/lexer/lexer.ml"
 
   | 5 ->
-# 566 "lib/lexer/lexer.mll"
+# 601 "lib/lexer/lexer.mll"
       (
         add_char '\t';
         string_literal lexbuf
       )
-# 1179 "lib/lexer/lexer.ml"
+# 1214 "lib/lexer/lexer.ml"
 
   | 6 ->
-# 572 "lib/lexer/lexer.mll"
+# 607 "lib/lexer/lexer.mll"
       (
         add_char '\b';
         string_literal lexbuf
       )
-# 1187 "lib/lexer/lexer.ml"
+# 1222 "lib/lexer/lexer.ml"
 
   | 7 ->
-# 578 "lib/lexer/lexer.mll"
+# 613 "lib/lexer/lexer.mll"
       (
         add_char '\012';
         string_literal lexbuf
       )
-# 1195 "lib/lexer/lexer.ml"
+# 1230 "lib/lexer/lexer.ml"
 
   | 8 ->
-# 584 "lib/lexer/lexer.mll"
+# 619 "lib/lexer/lexer.mll"
       (
         add_char '/';
         string_literal lexbuf
       )
-# 1203 "lib/lexer/lexer.ml"
+# 1238 "lib/lexer/lexer.ml"
 
   | 9 ->
 let
-# 589 "lib/lexer/lexer.mll"
+# 624 "lib/lexer/lexer.mll"
                                                       value
-# 1209 "lib/lexer/lexer.ml"
+# 1244 "lib/lexer/lexer.ml"
 = Lexing.sub_lexeme lexbuf (lexbuf.Lexing.lex_start_pos + 2) (lexbuf.Lexing.lex_start_pos + 6) in
-# 590 "lib/lexer/lexer.mll"
+# 625 "lib/lexer/lexer.mll"
       (
         add_string
           (parse_unicode_escape lexbuf value);
         string_literal lexbuf
       )
-# 1217 "lib/lexer/lexer.ml"
+# 1252 "lib/lexer/lexer.ml"
 
   | 10 ->
 let
-# 596 "lib/lexer/lexer.mll"
+# 631 "lib/lexer/lexer.mll"
                character
-# 1223 "lib/lexer/lexer.ml"
+# 1258 "lib/lexer/lexer.ml"
 = Lexing.sub_lexeme_char lexbuf (lexbuf.Lexing.lex_start_pos + 1) in
-# 597 "lib/lexer/lexer.mll"
+# 632 "lib/lexer/lexer.mll"
       (
-        error
-          lexbuf
-          (Printf.sprintf
-             "invalid escape sequence '\\%c'"
-             character)
+        error lexbuf
+          (Invalid_escape
+             (Printf.sprintf "\\%c" character))
       )
-# 1233 "lib/lexer/lexer.ml"
+# 1266 "lib/lexer/lexer.ml"
 
   | 11 ->
-# 606 "lib/lexer/lexer.mll"
+# 639 "lib/lexer/lexer.mll"
       (
         error lexbuf
-          "unterminated string literal"
+          Unterminated_string
       )
-# 1241 "lib/lexer/lexer.ml"
+# 1274 "lib/lexer/lexer.ml"
 
   | 12 ->
-# 612 "lib/lexer/lexer.mll"
+# 645 "lib/lexer/lexer.mll"
       (
         error lexbuf
-          "unterminated string literal"
+          Unterminated_string
       )
-# 1249 "lib/lexer/lexer.ml"
+# 1282 "lib/lexer/lexer.ml"
 
   | 13 ->
 let
-# 617 "lib/lexer/lexer.mll"
+# 650 "lib/lexer/lexer.mll"
                                value
-# 1255 "lib/lexer/lexer.ml"
+# 1288 "lib/lexer/lexer.ml"
 = Lexing.sub_lexeme lexbuf lexbuf.Lexing.lex_start_pos lexbuf.Lexing.lex_curr_pos in
-# 618 "lib/lexer/lexer.mll"
+# 651 "lib/lexer/lexer.mll"
       (
         add_string value;
         string_literal lexbuf
       )
-# 1262 "lib/lexer/lexer.ml"
+# 1295 "lib/lexer/lexer.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf;
       __ocaml_lex_string_literal_rec lexbuf __ocaml_lex_state
@@ -1268,45 +1301,45 @@ and block_comment lexbuf =
 and __ocaml_lex_block_comment_rec lexbuf __ocaml_lex_state =
   match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 625 "lib/lexer/lexer.mll"
+# 658 "lib/lexer/lexer.mll"
       (
         incr comment_depth;
         block_comment lexbuf
       )
-# 1277 "lib/lexer/lexer.ml"
+# 1310 "lib/lexer/lexer.ml"
 
   | 1 ->
-# 631 "lib/lexer/lexer.mll"
+# 664 "lib/lexer/lexer.mll"
       (
         decr comment_depth;
 
         if !comment_depth > 0 then
           block_comment lexbuf
       )
-# 1287 "lib/lexer/lexer.ml"
+# 1320 "lib/lexer/lexer.ml"
 
   | 2 ->
-# 639 "lib/lexer/lexer.mll"
+# 672 "lib/lexer/lexer.mll"
       (
         newline lexbuf;
         block_comment lexbuf
       )
-# 1295 "lib/lexer/lexer.ml"
+# 1328 "lib/lexer/lexer.ml"
 
   | 3 ->
-# 645 "lib/lexer/lexer.mll"
+# 678 "lib/lexer/lexer.mll"
       (
         error lexbuf
-          "unterminated block comment"
+          Unterminated_comment
       )
-# 1303 "lib/lexer/lexer.ml"
+# 1336 "lib/lexer/lexer.ml"
 
   | 4 ->
-# 651 "lib/lexer/lexer.mll"
+# 684 "lib/lexer/lexer.mll"
       (
         block_comment lexbuf
       )
-# 1310 "lib/lexer/lexer.ml"
+# 1343 "lib/lexer/lexer.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf;
       __ocaml_lex_block_comment_rec lexbuf __ocaml_lex_state

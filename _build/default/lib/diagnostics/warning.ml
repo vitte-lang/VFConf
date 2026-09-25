@@ -5,8 +5,9 @@
  * Canonical VFConf warning constructors.
  *
  * Warning codes are centralized here so semantic analysis,
- * schema validation, configuration loading and formatting use
- * stable warning identifiers and canonical English messages.
+ * schema validation, configuration loading, evaluation and
+ * formatting use stable warning identifiers and canonical
+ * English messages.
  *)
 
 type category =
@@ -20,16 +21,44 @@ type category =
   | Deprecation
 
 type kind =
+  (* Semantic *)
   | Duplicate_definition of string
   | Shadowed_definition of string
   | Unused_definition of string
   | Unused_section of string
   | Unused_value of string
+
+  (* Configuration *)
   | Redundant_assignment of string
   | Overwritten_value of string
   | Empty_section of string
   | Empty_array of string
   | Empty_object of string
+
+  (* Schema *)
+  | Unknown_key of string
+  | Unknown_section of string
+  | Suspicious_value of {
+      key : string option;
+      value : string;
+    }
+  | Schema_default_used of string
+  | Schema_additional_field of string
+
+  (* Evaluation *)
+  | Implicit_conversion of {
+      from_type : string;
+      to_type : string;
+    }
+  | Condition_always_true
+  | Condition_always_false
+  | Unreachable_configuration
+
+  (* Include *)
+  | Include_repeated of string
+  | Include_outside_root of string
+
+  (* Deprecation *)
   | Deprecated_key of {
       key : string;
       replacement : string option;
@@ -42,29 +71,16 @@ type kind =
       syntax : string;
       replacement : string option;
     }
-  | Unknown_key of string
-  | Unknown_section of string
-  | Suspicious_value of {
-      key : string option;
-      value : string;
-    }
-  | Implicit_conversion of {
-      from_type : string;
-      to_type : string;
-    }
-  | Include_repeated of string
-  | Include_outside_root of string
-  | Schema_default_used of string
-  | Schema_additional_field of string
-  | Condition_always_true
-  | Condition_always_false
-  | Unreachable_configuration
+
+  (* Style *)
   | Non_canonical_boolean of string
   | Non_canonical_size of string
   | Non_canonical_duration of string
   | Non_canonical_color of string
-  | Compatibility_issue of string
   | Style_issue of string
+
+  (* Compatibility *)
+  | Compatibility_issue of string
 
 type t = {
   category : category;
@@ -136,15 +152,6 @@ let code_of_kind = function
   | Empty_object _ ->
       "VFW0305"
 
-  | Deprecated_key _ ->
-      "VFW0701"
-
-  | Deprecated_value _ ->
-      "VFW0702"
-
-  | Deprecated_syntax _ ->
-      "VFW0703"
-
   | Unknown_key _ ->
       "VFW0401"
 
@@ -154,20 +161,14 @@ let code_of_kind = function
   | Suspicious_value _ ->
       "VFW0403"
 
-  | Implicit_conversion _ ->
-      "VFW0501"
-
-  | Include_repeated _ ->
-      "VFW0601"
-
-  | Include_outside_root _ ->
-      "VFW0602"
-
   | Schema_default_used _ ->
       "VFW0404"
 
   | Schema_additional_field _ ->
       "VFW0405"
+
+  | Implicit_conversion _ ->
+      "VFW0501"
 
   | Condition_always_true ->
       "VFW0502"
@@ -177,6 +178,21 @@ let code_of_kind = function
 
   | Unreachable_configuration ->
       "VFW0504"
+
+  | Include_repeated _ ->
+      "VFW0601"
+
+  | Include_outside_root _ ->
+      "VFW0602"
+
+  | Deprecated_key _ ->
+      "VFW0701"
+
+  | Deprecated_value _ ->
+      "VFW0702"
+
+  | Deprecated_syntax _ ->
+      "VFW0703"
 
   | Non_canonical_boolean _ ->
       "VFW0801"
@@ -190,11 +206,11 @@ let code_of_kind = function
   | Non_canonical_color _ ->
       "VFW0804"
 
-  | Compatibility_issue _ ->
-      "VFW0901"
-
   | Style_issue _ ->
       "VFW0805"
+
+  | Compatibility_issue _ ->
+      "VFW0901"
 
 (* ---------------------------------------------------------- *)
 (* Messages                                                   *)
@@ -260,24 +276,6 @@ let message_of_kind = function
         "object assigned to '%s' is empty"
         key
 
-  | Deprecated_key { key; replacement } ->
-      Printf.sprintf
-        "configuration key '%s' is deprecated%s"
-        key
-        (replacement_suffix replacement)
-
-  | Deprecated_value { value; replacement } ->
-      Printf.sprintf
-        "configuration value '%s' is deprecated%s"
-        value
-        (replacement_suffix replacement)
-
-  | Deprecated_syntax { syntax; replacement } ->
-      Printf.sprintf
-        "syntax '%s' is deprecated%s"
-        syntax
-        (replacement_suffix replacement)
-
   | Unknown_key key ->
       Printf.sprintf
         "unknown configuration key '%s'"
@@ -303,11 +301,30 @@ let message_of_kind = function
         value
         key
 
+  | Schema_default_used field ->
+      Printf.sprintf
+        "schema default is used for field '%s'"
+        field
+
+  | Schema_additional_field field ->
+      Printf.sprintf
+        "field '%s' is not declared by the schema"
+        field
+
   | Implicit_conversion { from_type; to_type } ->
       Printf.sprintf
         "implicit conversion from %s to %s"
         from_type
         to_type
+
+  | Condition_always_true ->
+      "condition is always true"
+
+  | Condition_always_false ->
+      "condition is always false"
+
+  | Unreachable_configuration ->
+      "configuration block is unreachable"
 
   | Include_repeated path ->
       Printf.sprintf
@@ -319,24 +336,23 @@ let message_of_kind = function
         "included file '%s' is outside the configuration root"
         path
 
-  | Schema_default_used field ->
+  | Deprecated_key { key; replacement } ->
       Printf.sprintf
-        "schema default is used for field '%s'"
-        field
+        "configuration key '%s' is deprecated%s"
+        key
+        (replacement_suffix replacement)
 
-  | Schema_additional_field field ->
+  | Deprecated_value { value; replacement } ->
       Printf.sprintf
-        "field '%s' is not declared by the schema"
-        field
+        "configuration value '%s' is deprecated%s"
+        value
+        (replacement_suffix replacement)
 
-  | Condition_always_true ->
-      "condition is always true"
-
-  | Condition_always_false ->
-      "condition is always false"
-
-  | Unreachable_configuration ->
-      "configuration block is unreachable"
+  | Deprecated_syntax { syntax; replacement } ->
+      Printf.sprintf
+        "syntax '%s' is deprecated%s"
+        syntax
+        (replacement_suffix replacement)
 
   | Non_canonical_boolean value ->
       Printf.sprintf
@@ -358,14 +374,14 @@ let message_of_kind = function
         "non-canonical color representation '%s'"
         value
 
-  | Compatibility_issue message ->
-      Printf.sprintf
-        "compatibility issue: %s"
-        message
-
   | Style_issue message ->
       Printf.sprintf
         "style issue: %s"
+        message
+
+  | Compatibility_issue message ->
+      Printf.sprintf
+        "compatibility issue: %s"
         message
 
 (* ---------------------------------------------------------- *)
@@ -387,11 +403,6 @@ let category_of_kind = function
   | Empty_object _ ->
       Configuration
 
-  | Deprecated_key _
-  | Deprecated_value _
-  | Deprecated_syntax _ ->
-      Deprecation
-
   | Unknown_key _
   | Unknown_section _
   | Suspicious_value _
@@ -408,6 +419,11 @@ let category_of_kind = function
   | Include_repeated _
   | Include_outside_root _ ->
       Include
+
+  | Deprecated_key _
+  | Deprecated_value _
+  | Deprecated_syntax _ ->
+      Deprecation
 
   | Non_canonical_boolean _
   | Non_canonical_size _
@@ -519,46 +535,6 @@ let empty_object ?span key =
     (Empty_object key)
 
 (* ---------------------------------------------------------- *)
-(* Deprecation constructors                                   *)
-(* ---------------------------------------------------------- *)
-
-let deprecated_key
-    ?span
-    ?replacement
-    key =
-  make
-    ?span
-    (Deprecated_key
-       {
-         key;
-         replacement;
-       })
-
-let deprecated_value
-    ?span
-    ?replacement
-    value =
-  make
-    ?span
-    (Deprecated_value
-       {
-         value;
-         replacement;
-       })
-
-let deprecated_syntax
-    ?span
-    ?replacement
-    syntax =
-  make
-    ?span
-    (Deprecated_syntax
-       {
-         syntax;
-         replacement;
-       })
-
-(* ---------------------------------------------------------- *)
 (* Schema constructors                                        *)
 (* ---------------------------------------------------------- *)
 
@@ -641,6 +617,46 @@ let include_outside_root ?span path =
     (Include_outside_root path)
 
 (* ---------------------------------------------------------- *)
+(* Deprecation constructors                                   *)
+(* ---------------------------------------------------------- *)
+
+let deprecated_key
+    ?span
+    ?replacement
+    key =
+  make
+    ?span
+    (Deprecated_key
+       {
+         key;
+         replacement;
+       })
+
+let deprecated_value
+    ?span
+    ?replacement
+    value =
+  make
+    ?span
+    (Deprecated_value
+       {
+         value;
+         replacement;
+       })
+
+let deprecated_syntax
+    ?span
+    ?replacement
+    syntax =
+  make
+    ?span
+    (Deprecated_syntax
+       {
+         syntax;
+         replacement;
+       })
+
+(* ---------------------------------------------------------- *)
 (* Style constructors                                         *)
 (* ---------------------------------------------------------- *)
 
@@ -693,6 +709,30 @@ let category warning =
 
 let span warning =
   warning.span
+
+let is_semantic warning =
+  warning.category = Semantic
+
+let is_configuration warning =
+  warning.category = Configuration
+
+let is_schema warning =
+  warning.category = Schema
+
+let is_evaluation warning =
+  warning.category = Evaluation
+
+let is_include warning =
+  warning.category = Include
+
+let is_deprecation warning =
+  warning.category = Deprecation
+
+let is_style warning =
+  warning.category = Style
+
+let is_compatibility warning =
+  warning.category = Compatibility
 
 (* ---------------------------------------------------------- *)
 (* Pretty printing                                            *)

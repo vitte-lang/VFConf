@@ -61,48 +61,75 @@ let definition_key name =
 let add_diagnostic diagnostic (state : state) =
   {
     state with
-    diagnostics = diagnostic :: state.diagnostics;
+    diagnostics =
+      diagnostic :: state.diagnostics;
   }
 
 let add_error ?span kind (state : state) =
-  add_diagnostic
-    (Error.to_diagnostic
-       (Error.make ?span kind))
-    state
+  Error.make
+    ?span
+    kind
+  |> Error.to_diagnostic
+  |> fun diagnostic ->
+       add_diagnostic diagnostic state
 
-let duplicate_key path span (state : state) =
+let add_warning warning (state : state) =
+  Warning.to_diagnostic warning
+  |> fun diagnostic ->
+       add_diagnostic diagnostic state
+
+let duplicate_key path span state =
   add_error
     ~span
     (Error.Duplicate_key
        (Config.string_of_path path))
     state
 
-let duplicate_definition name span (state : state) =
-  add_diagnostic
-    (Warning.to_diagnostic
-       (Warning.duplicate_definition
-          ~span
-          name))
+let duplicate_definition name span state =
+  add_warning
+    (Warning.duplicate_definition
+       ~span
+       name)
     state
 
-let undefined_reference path span (state : state) =
+let undefined_reference path span state =
   add_error
     ~span
     (Error.Undefined_reference
        (Config.string_of_path path))
     state
 
+let invalid_assignment path operator span state =
+  add_error
+    ~span
+    (Error.Invalid_assignment
+       {
+         key =
+           Config.string_of_path path;
+         operator =
+           Statement.string_of_assignment_operator
+             operator;
+       })
+    state
+
 (* ---------------------------------------------------------- *)
 (* Symbols                                                    *)
 (* ---------------------------------------------------------- *)
 
-let add_configuration_symbol path value span (state : state) =
+let add_configuration_symbol
+    path
+    value
+    span
+    (state : state) =
   let key =
     path_key path
   in
 
   if String_map.mem key state.symbols then
-    duplicate_key path span state
+    duplicate_key
+      path
+      span
+      state
   else
     let symbol =
       {
@@ -123,13 +150,20 @@ let add_configuration_symbol path value span (state : state) =
           state.symbols;
     }
 
-let add_definition_symbol name value span (state : state) =
+let add_definition_symbol
+    name
+    value
+    span
+    (state : state) =
   let key =
     definition_key name
   in
 
   if String_map.mem key state.definitions then
-    duplicate_definition name span state
+    duplicate_definition
+      name
+      span
+      state
   else
     let symbol =
       {
@@ -150,12 +184,16 @@ let add_definition_symbol name value span (state : state) =
           state.definitions;
     }
 
-let find_configuration_symbol (state : state) path =
+let find_configuration_symbol
+    (state : state)
+    path =
   String_map.find_opt
     (path_key path)
     state.symbols
 
-let find_definition_symbol (state : state) name =
+let find_definition_symbol
+    (state : state)
+    name =
   String_map.find_opt
     (definition_key name)
     state.definitions
@@ -185,7 +223,9 @@ let add_schema_field path (state : state) =
             state.schema_fields;
       }
 
-let schema_reference_exists (state : state) path =
+let schema_reference_exists
+    (state : state)
+    path =
   let direct =
     String_set.mem
       (path_key path)
@@ -208,7 +248,9 @@ let schema_reference_exists (state : state) path =
 (* Reference analysis                                         *)
 (* ---------------------------------------------------------- *)
 
-let reference_exists (state : state) path =
+let reference_exists
+    (state : state)
+    path =
   match path with
   | [name]
     when Option.is_some
@@ -217,13 +259,48 @@ let reference_exists (state : state) path =
 
   | _ ->
       Option.is_some
-        (find_configuration_symbol state path)
-      || schema_reference_exists state path
+        (find_configuration_symbol
+           state
+           path)
+      || schema_reference_exists
+           state
+           path
 
-let rec analyze_value (state : state) value =
+let reference_exists_in_scope
+    (state : state)
+    prefix
+    path =
+  let local_path =
+    qualify prefix path
+  in
+
+  let local_exists =
+    prefix <> []
+    && Option.is_some
+         (find_configuration_symbol
+            state
+            local_path)
+  in
+
+  if local_exists then
+    true
+  else
+    reference_exists
+      state
+      path
+
+let rec analyze_value
+    prefix
+    (state : state)
+    value =
   match value.Node.value with
   | Value.Reference path ->
-      if reference_exists state path then
+      if
+        reference_exists_in_scope
+          state
+          prefix
+          path
+      then
         state
       else
         undefined_reference
@@ -233,7 +310,7 @@ let rec analyze_value (state : state) value =
 
   | Value.Array values ->
       List.fold_left
-        analyze_value
+        (analyze_value prefix)
         state
         values
 
@@ -241,6 +318,7 @@ let rec analyze_value (state : state) value =
       List.fold_left
         (fun state entry ->
           analyze_value
+            prefix
             state
             entry.Value.value)
         state
@@ -256,11 +334,19 @@ let rec analyze_value (state : state) value =
   | Value.Size _ ->
       state
 
-let analyze_condition (state : state) condition =
+let analyze_condition
+    prefix
+    (state : state)
+    condition =
   let rec walk state condition =
     match condition.Node.value with
     | Statement.Reference path ->
-        if reference_exists state path then
+        if
+          reference_exists_in_scope
+            state
+            prefix
+            path
+        then
           state
         else
           undefined_reference
@@ -272,12 +358,25 @@ let analyze_condition (state : state) condition =
         state
 
     | Statement.Not condition ->
-        walk state condition
+        walk
+          state
+          condition
 
-    | Statement.Logical { left; right; _ } ->
-        state
-        |> fun state -> walk state left
-        |> fun state -> walk state right
+    | Statement.Logical
+        {
+          left;
+          right;
+          _;
+        } ->
+        let state =
+          walk
+            state
+            left
+        in
+
+        walk
+          state
+          right
 
     | Statement.Compare
         {
@@ -286,7 +385,12 @@ let analyze_condition (state : state) condition =
           _;
         } ->
         let state =
-          if reference_exists state reference then
+          if
+            reference_exists_in_scope
+              state
+              prefix
+              reference
+          then
             state
           else
             undefined_reference
@@ -295,16 +399,24 @@ let analyze_condition (state : state) condition =
               state
         in
 
-        analyze_value state value
+        analyze_value
+          prefix
+          state
+          value
   in
 
-  walk state condition
+  walk
+    state
+    condition
 
 (* ---------------------------------------------------------- *)
 (* Declaration pass                                           *)
 (* ---------------------------------------------------------- *)
 
-let rec declare_statement prefix state statement =
+let rec declare_statement
+    prefix
+    state
+    statement =
   match statement.Node.value with
   | Statement.Assignment assignment ->
       let path =
@@ -345,14 +457,14 @@ let rec declare_statement prefix state statement =
       state
 
   | Statement.Section section ->
-      let prefix =
+      let section_prefix =
         qualify
           prefix
           section.Statement.name
       in
 
       List.fold_left
-        (declare_statement prefix)
+        (declare_statement section_prefix)
         state
         section.Statement.body
 
@@ -386,15 +498,20 @@ let declare_document document =
 (* Reference pass                                             *)
 (* ---------------------------------------------------------- *)
 
-let rec analyze_statement prefix state statement =
+let rec analyze_statement
+    prefix
+    state
+    statement =
   match statement.Node.value with
   | Statement.Assignment assignment ->
       analyze_value
+        prefix
         state
         assignment.Statement.value
 
   | Statement.Define definition ->
       analyze_value
+        prefix
         state
         definition.Statement.value
 
@@ -402,20 +519,21 @@ let rec analyze_statement prefix state statement =
       state
 
   | Statement.Section section ->
-      let prefix =
+      let section_prefix =
         qualify
           prefix
           section.Statement.name
       in
 
       List.fold_left
-        (analyze_statement prefix)
+        (analyze_statement section_prefix)
         state
         section.Statement.body
 
   | Statement.Conditional conditional ->
       let state =
         analyze_condition
+          prefix
           state
           conditional.Statement.condition
       in
@@ -443,45 +561,10 @@ let rec analyze_statement prefix state statement =
 (* Assignment semantics                                       *)
 (* ---------------------------------------------------------- *)
 
-let validate_assignment_operator (state : state) statement =
-  match statement.Node.value with
-  | Statement.Assignment assignment ->
-      begin
-        match assignment.Statement.operator with
-        | Statement.Assign
-        | Statement.Define_assign ->
-            state
-
-        | Statement.Add_assign
-        | Statement.Sub_assign ->
-            let path =
-              assignment.Statement.key
-            in
-
-            if
-              Option.is_some
-                (find_configuration_symbol
-                   state
-                   path)
-            then
-              state
-            else
-              add_error
-                ~span:statement.Node.span
-                (Error.Invalid_assignment
-                     {
-                       key = Config.string_of_path path;
-                       operator =
-                         Statement.string_of_assignment_operator
-                           assignment.Statement.operator;
-                     })
-                state
-      end
-
-  | _ ->
-      state
-
-let rec validate_statement prefix state statement =
+let rec validate_statement
+    prefix
+    state
+    statement =
   let state =
     match statement.Node.value with
     | Statement.Assignment assignment ->
@@ -507,15 +590,10 @@ let rec validate_statement prefix state statement =
               then
                 state
               else
-                add_error
-                  ~span:statement.Node.span
-                  (Error.Invalid_assignment
-                     {
-                       key = Config.string_of_path path;
-                       operator =
-                         Statement.string_of_assignment_operator
-                           assignment.Statement.operator;
-                     })
+                invalid_assignment
+                  path
+                  assignment.Statement.operator
+                  statement.Node.span
                   state
         end
 
@@ -525,14 +603,14 @@ let rec validate_statement prefix state statement =
 
   match statement.Node.value with
   | Statement.Section section ->
-      let prefix =
+      let section_prefix =
         qualify
           prefix
           section.Statement.name
       in
 
       List.fold_left
-        (validate_statement prefix)
+        (validate_statement section_prefix)
         state
         section.Statement.body
 
@@ -596,7 +674,8 @@ let analyze document =
 
   {
     document;
-    symbols = definitions @ symbols;
+    symbols =
+      definitions @ symbols;
     diagnostics =
       List.rev state.diagnostics;
   }
@@ -613,7 +692,8 @@ let has_errors result =
     result.diagnostics
 
 let is_valid result =
-  not (has_errors result)
+  not
+    (has_errors result)
 
 let diagnostics result =
   result.diagnostics
@@ -633,7 +713,9 @@ let find_symbol result path =
     (fun symbol ->
       match symbol.kind with
       | Configuration ->
-          String.equal symbol.name key
+          String.equal
+            symbol.name
+            key
 
       | Definition ->
           false)
@@ -644,7 +726,9 @@ let find_definition result name =
     (fun symbol ->
       match symbol.kind with
       | Definition ->
-          String.equal symbol.name name
+          String.equal
+            symbol.name
+            name
 
       | Configuration ->
           false)

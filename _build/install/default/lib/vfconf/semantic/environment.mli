@@ -1,1 +1,0 @@
-../../../../../default/lib/semantic/environment.mli

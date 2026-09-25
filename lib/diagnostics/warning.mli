@@ -16,16 +16,44 @@ type category =
   | Deprecation
 
 type kind =
+  (* Semantic *)
   | Duplicate_definition of string
   | Shadowed_definition of string
   | Unused_definition of string
   | Unused_section of string
   | Unused_value of string
+
+  (* Configuration *)
   | Redundant_assignment of string
   | Overwritten_value of string
   | Empty_section of string
   | Empty_array of string
   | Empty_object of string
+
+  (* Schema *)
+  | Unknown_key of string
+  | Unknown_section of string
+  | Suspicious_value of {
+      key : string option;
+      value : string;
+    }
+  | Schema_default_used of string
+  | Schema_additional_field of string
+
+  (* Evaluation *)
+  | Implicit_conversion of {
+      from_type : string;
+      to_type : string;
+    }
+  | Condition_always_true
+  | Condition_always_false
+  | Unreachable_configuration
+
+  (* Include *)
+  | Include_repeated of string
+  | Include_outside_root of string
+
+  (* Deprecation *)
   | Deprecated_key of {
       key : string;
       replacement : string option;
@@ -38,29 +66,16 @@ type kind =
       syntax : string;
       replacement : string option;
     }
-  | Unknown_key of string
-  | Unknown_section of string
-  | Suspicious_value of {
-      key : string option;
-      value : string;
-    }
-  | Implicit_conversion of {
-      from_type : string;
-      to_type : string;
-    }
-  | Include_repeated of string
-  | Include_outside_root of string
-  | Schema_default_used of string
-  | Schema_additional_field of string
-  | Condition_always_true
-  | Condition_always_false
-  | Unreachable_configuration
+
+  (* Style *)
   | Non_canonical_boolean of string
   | Non_canonical_size of string
   | Non_canonical_duration of string
   | Non_canonical_color of string
-  | Compatibility_issue of string
   | Style_issue of string
+
+  (* Compatibility *)
+  | Compatibility_issue of string
 
 type t = {
   category : category;
@@ -192,28 +207,6 @@ val empty_object :
   t
 
 (* ---------------------------------------------------------- *)
-(* Deprecation constructors                                   *)
-(* ---------------------------------------------------------- *)
-
-val deprecated_key :
-  ?span:Node.span ->
-  ?replacement:string ->
-  string ->
-  t
-
-val deprecated_value :
-  ?span:Node.span ->
-  ?replacement:string ->
-  string ->
-  t
-
-val deprecated_syntax :
-  ?span:Node.span ->
-  ?replacement:string ->
-  string ->
-  t
-
-(* ---------------------------------------------------------- *)
 (* Schema constructors                                        *)
 (* ---------------------------------------------------------- *)
 
@@ -284,6 +277,28 @@ val include_outside_root :
   t
 
 (* ---------------------------------------------------------- *)
+(* Deprecation constructors                                   *)
+(* ---------------------------------------------------------- *)
+
+val deprecated_key :
+  ?span:Node.span ->
+  ?replacement:string ->
+  string ->
+  t
+
+val deprecated_value :
+  ?span:Node.span ->
+  ?replacement:string ->
+  string ->
+  t
+
+val deprecated_syntax :
+  ?span:Node.span ->
+  ?replacement:string ->
+  string ->
+  t
+
+(* ---------------------------------------------------------- *)
 (* Style constructors                                         *)
 (* ---------------------------------------------------------- *)
 
@@ -340,6 +355,38 @@ val category :
 val span :
   t ->
   Node.span option
+
+val is_semantic :
+  t ->
+  bool
+
+val is_configuration :
+  t ->
+  bool
+
+val is_schema :
+  t ->
+  bool
+
+val is_evaluation :
+  t ->
+  bool
+
+val is_include :
+  t ->
+  bool
+
+val is_deprecation :
+  t ->
+  bool
+
+val is_style :
+  t ->
+  bool
+
+val is_compatibility :
+  t ->
+  bool
 
 (* ---------------------------------------------------------- *)
 (* Pretty printing                                            *)

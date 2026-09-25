@@ -215,7 +215,7 @@ else:
     errors.append("bin/check.ml missing")
 
 # ------------------------------------------------------------
-# Detect old duplicated parser message bug
+# Detect duplicated parser diagnostic messages
 # ------------------------------------------------------------
 
 parse = ROOT / "lib/parser/parse.ml"
@@ -223,17 +223,22 @@ parse = ROOT / "lib/parser/parse.ml"
 if parse.exists():
     source = read(parse)
 
-    suspicious = [
-        'Unexpected_token error.message',
-        'unexpected_token error.message',
+    formatted_unexpected_token_patterns = [
+        r'Unexpected_token\s*\(\s*Printf\.sprintf',
+        r'Unexpected_token\s*\(\s*Format\.asprintf',
+        r'Unexpected_token\s*\(\s*Error\.message',
+        r'unexpected_token\s*\(\s*Printf\.sprintf',
+        r'unexpected_token\s*\(\s*Format\.asprintf',
+        r'unexpected_token\s*\(\s*Error\.message',
     ]
 
-    for expression in suspicious:
-        if expression in source:
+    for pattern in formatted_unexpected_token_patterns:
+        if re.search(pattern, source, re.MULTILINE):
             errors.append(
-                "parser diagnostic appears to pass an already "
-                "formatted error message as Unexpected_token"
+                "parser diagnostic passes an already formatted "
+                "message as Unexpected_token"
             )
+            break
 
 # ------------------------------------------------------------
 # Report
@@ -260,9 +265,26 @@ for family, name, count, status in constructor_report:
     print(
         f"{family:8} "
         f"{status:23} "
-        f"{name:34} "
-        f"{count}"
+        f"{name}"
     )
+
+used_errors = sum(
+    1 for family, _, _, status in constructor_report
+    if family == "ERROR" and status == "USED"
+)
+
+used_warnings = sum(
+    1 for family, _, _, status in constructor_report
+    if family == "WARNING" and status == "USED"
+)
+
+print()
+print(
+    f"ERROR COVERAGE:   {used_errors}/{len(error_constructors)}"
+)
+print(
+    f"WARNING COVERAGE: {used_warnings}/{len(warning_constructors)}"
+)
 
 print()
 print("WARNINGS")

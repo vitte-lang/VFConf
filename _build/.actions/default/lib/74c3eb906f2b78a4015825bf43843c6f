@@ -1,1 +1,1 @@
-lib/config/loader.mli: Config Format Include Lexing Node Statement Value
+lib/config/loader.mli: Config Diagnostic Format Include Lexing Node Statement Value

@@ -1,1 +1,1 @@
-lib/parser/parse.mli: Diagnostic Format Lexing Node Statement
+lib/parser/parse.mli: Diagnostic Format Lexer Lexing Node Statement

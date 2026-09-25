@@ -52,8 +52,8 @@ val parse_hex_byte : string -> int -> int
 val color_of_hex : string -> Value.color
 val int_of_int64_checked : int64 -> int
 val alpha_of_value : Value.t Node.t -> float
-val rgb_component : Value.t Node.t -> int
-val rgba_alpha : Value.t Node.t -> float
+val group_document_sections :
+  Statement.t Node.t list -> Statement.t Node.t list
 val menhir_begin_marker : int
 val xv_value : Value.t Node.t
 val xv_statements_before_rbrace : Statement.t Node.t list
@@ -61,10 +61,9 @@ val xv_statement : Statement.t Node.t
 val xv_separators1 : unit
 val xv_separators : unit
 val xv_separator : unit
-val xv_section : Statement.section
 val xv_reference : Value.reference
 val xv_path_component : string
-val xv_path : Statement.section_name
+val xv_path : Value.reference
 val xv_optional_else : Statement.t Node.t list option
 val xv_object_value : Value.object_entry list
 val xv_object_tail : Value.object_entry list
@@ -72,11 +71,9 @@ val xv_object_entry : Value.object_entry
 val xv_object_contents : Value.object_entry list
 val xv_numeric_value : Value.t Node.t
 val xv_non_section_statement : Statement.t Node.t
-val xv_ini_section_body : Statement.t Node.t list
-val xv_ini_section : Statement.t Node.t
 val xv_include_statement : Statement.include_statement
-val xv_document_items : Statement.t Node.t list
-val xv_document_item : Statement.t Node.t
+val xv_flat_document_items : Statement.t Node.t list
+val xv_flat_document_item : Statement.t Node.t
 val xv_document : Statement.t Node.t list
 val xv_define_statement : Statement.define_statement
 val xv_conditional : Statement.conditional

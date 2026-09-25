@@ -6,7 +6,7 @@
 (library
  (name vfconf)
  (public_name vfconf)
- (libraries unix)
+ (libraries unix menhirLib)
  (modules
   Ast
   Node
@@ -53,6 +53,7 @@
 
   Path
   String_utils
-  File_utils))
+  File_utils
+  Query))
 
 

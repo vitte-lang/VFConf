@@ -164,6 +164,7 @@ val apply_assignment :
 (* ---------------------------------------------------------- *)
 
 val evaluate_condition :
+  Config.path ->
   state ->
   Statement.condition Node.t ->
   bool

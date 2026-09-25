@@ -1,1 +1,1 @@
-lib/parser/parser.mli: Lexing Node Statement Value
+lib/parser/parser.mli: Lexing MenhirLib Node Statement Value

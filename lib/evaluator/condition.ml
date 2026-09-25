@@ -205,25 +205,43 @@ let compare_values operator left right =
 (* Reference resolution                                       *)
 (* ---------------------------------------------------------- *)
 
-let resolve_reference config reference =
-  match Config.find_opt reference config with
+let resolve_reference prefix config reference =
+  let local =
+    prefix @ reference
+  in
+
+  match
+    if prefix = [] then
+      None
+    else
+      Config.find_opt local config
+  with
   | Some value ->
       value
 
   | None ->
-      raise
-        (Condition_error
-           (Undefined_reference reference))
+      begin
+        match Config.find_opt reference config with
+        | Some value ->
+            value
 
-let resolve_reference_value config reference =
-  (resolve_reference config reference).Node.value
+        | None ->
+            raise
+              (Condition_error
+                 (Undefined_reference reference))
+      end
 
-let reference_exists config reference =
-  Config.mem reference config
+let resolve_reference_value prefix config reference =
+  (resolve_reference prefix config reference).Node.value
 
-let reference_truthy config reference =
+let reference_exists prefix config reference =
+  (prefix <> [] && Config.mem (prefix @ reference) config)
+  || Config.mem reference config
+
+let reference_truthy prefix config reference =
   let value =
     resolve_reference_value
+      prefix
       config
       reference
   in
@@ -241,10 +259,11 @@ let reference_truthy config reference =
 (* Evaluation                                                 *)
 (* ---------------------------------------------------------- *)
 
-let rec evaluate config condition =
+let rec evaluate prefix config condition =
   match condition.Node.value with
   | Statement.Reference reference ->
       reference_truthy
+        prefix
         config
         reference
 
@@ -254,6 +273,7 @@ let rec evaluate config condition =
   | Statement.Not condition ->
       not
         (evaluate
+           prefix
            config
            condition)
 
@@ -263,9 +283,9 @@ let rec evaluate config condition =
         operator = Statement.And;
         right;
       } ->
-      evaluate config left
+      evaluate prefix config left
       &&
-      evaluate config right
+      evaluate prefix config right
 
   | Statement.Logical
       {
@@ -273,9 +293,9 @@ let rec evaluate config condition =
         operator = Statement.Or;
         right;
       } ->
-      evaluate config left
+      evaluate prefix config left
       ||
-      evaluate config right
+      evaluate prefix config right
 
   | Statement.Compare
       {
@@ -285,6 +305,7 @@ let rec evaluate config condition =
       } ->
       let left =
         resolve_reference_value
+          prefix
           config
           reference
       in
@@ -294,10 +315,11 @@ let rec evaluate config condition =
         left
         value.Node.value
 
-let evaluate_opt config condition =
+let evaluate_opt prefix config condition =
   try
     Some
       (evaluate
+         prefix
          config
          condition)
   with
@@ -306,9 +328,10 @@ let evaluate_opt config condition =
 
 let evaluate_default
     ~default
+    prefix
     config
     condition =
-  match evaluate_opt config condition with
+  match evaluate_opt prefix config condition with
   | Some value ->
       value
 
@@ -421,10 +444,11 @@ let diagnostic_of_error ?span = function
            (Value.type_name right))
       |> Error.to_diagnostic
 
-let evaluate_diagnostic config condition =
+let evaluate_diagnostic prefix config condition =
   try
     Ok
       (evaluate
+         prefix
          config
          condition)
   with

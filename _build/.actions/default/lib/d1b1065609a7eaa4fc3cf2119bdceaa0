@@ -1,1 +1,1 @@
-lib/config/loader.ml: Bool Config Filename Float Format Include Int64 Lexer Lexing List Node Parser Printf Statement String Value
+lib/config/loader.ml: Bool Config Error Filename Float Format Include Int64 Lexer Lexing List Node Parser Printf Statement String Value

@@ -346,3 +346,20 @@ val pp :
 val to_string :
   t ->
   string
+(* ---------------------------------------------------------- *)
+(* Diagnostic explanations                                    *)
+(* ---------------------------------------------------------- *)
+
+type explanation = {
+  code : string;
+  category : category;
+  title : string;
+  description : string;
+}
+
+val explanations :
+  explanation list
+
+val explain :
+  string ->
+  explanation option

@@ -20,6 +20,7 @@ type violation = {
   severity : severity;
   path : Config.path option;
   span : Node.span option;
+  warning : Warning.kind option;
 }
 
 type validator =
@@ -97,12 +98,14 @@ val clear_path :
 val violation :
   ?path:Config.path ->
   ?span:Node.span ->
+  ?warning:Warning.kind ->
   ?severity:severity ->
   rule:string ->
   string ->
   violation
 
 val violation_for_entry :
+  ?warning:Warning.kind ->
   ?severity:severity ->
   rule:string ->
   string ->

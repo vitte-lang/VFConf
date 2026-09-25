@@ -47,6 +47,10 @@ type error =
 
 exception Schema_error of error
 
+val diagnostic_of_error :
+  error ->
+  Diagnostic.t
+
 (* ---------------------------------------------------------- *)
 (* Paths                                                      *)
 (* ---------------------------------------------------------- *)

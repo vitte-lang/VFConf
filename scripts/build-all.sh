@@ -3,19 +3,25 @@
 # VFConf — Vitte Foundation Configuration Language
 # scripts/build-all.sh
 #
-# Universal build orchestrator.
+# Universal host-native build orchestrator.
 #
 # IMPORTANT:
 #   This script does NOT magically cross-compile VFConf.
 #
 #   It selects the native builder for the CURRENT host:
-#     macOS       -> build-macos.sh
-#     Linux       -> build-linux.sh
-#     BSD         -> build-bsd.sh
-#     Windows     -> build-windows.ps1
 #
-#   Other targets require native CI runners, virtual machines,
-#   containers where applicable, or configured cross-compilers.
+#     macOS       -> scripts/build-macos.sh
+#     Linux       -> scripts/build-linux.sh
+#     BSD         -> scripts/build-bsd.sh
+#     Windows     -> scripts/build-windows.ps1
+#
+#   Other operating systems and architectures require:
+#     - native CI runners
+#     - virtual machines
+#     - appropriate containers
+#     - or correctly configured cross-compilers
+#
+# VFConf currently exposes 20 command-line executables.
 
 set -Eeuo pipefail
 IFS=$'\n\t'
@@ -31,6 +37,7 @@ readonly PROJECT_ROOT="$(
 )"
 
 readonly DIST_DIR="${PROJECT_ROOT}/dist"
+readonly PROJECT_NAME="vfconf"
 
 PROFILE="release"
 CLEAN=0
@@ -39,16 +46,45 @@ RUN_DIAGNOSTICS=1
 VERBOSE=0
 JOBS=""
 
+BUILDER_ARGS=()
+
+readonly VFCONF_EXECUTABLES=(
+    "main:vfconf"
+    "check:vfconf-check"
+    "dump:vfconf-dump"
+    "fmt:vfconf-fmt"
+    "fmt_all:vfconf-fmt-all"
+    "get:vfconf-get"
+    "set_cmd:vfconf-set"
+    "unset:vfconf-unset"
+    "exists:vfconf-exists"
+    "list_cmd:vfconf-list"
+    "tree_cmd:vfconf-tree"
+    "diff_cmd:vfconf-diff"
+    "merge_cmd:vfconf-merge"
+    "resolve_cmd:vfconf-resolve"
+    "eval_cmd:vfconf-eval"
+    "query_cmd:vfconf-query"
+    "diagnostics:vfconf-diagnostics"
+    "explain:vfconf-explain"
+    "stats:vfconf-stats"
+    "check_all:vfconf-check-all"
+)
+
 log() {
-    printf '[vfconf] %s\n' "$*"
+    printf '[vfconf-all] %s\n' "$*"
 }
 
 warn() {
-    printf '[vfconf] warning: %s\n' "$*" >&2
+    printf '[vfconf-all] warning: %s\n' "$*" >&2
+}
+
+error() {
+    printf '[vfconf-all] error: %s\n' "$*" >&2
 }
 
 die() {
-    printf '[vfconf] error: %s\n' "$*" >&2
+    error "$*"
     exit 1
 }
 
@@ -80,6 +116,17 @@ Examples:
   scripts/build-all.sh --clean --release --test --diagnostics
   scripts/build-all.sh --no-diagnostics
   scripts/build-all.sh -j 4
+
+Host-native builders:
+  macOS       scripts/build-macos.sh
+  Linux       scripts/build-linux.sh
+  BSD         scripts/build-bsd.sh
+  Windows     scripts/build-windows.ps1
+
+Important:
+  build-all.sh orchestrates the CURRENT host toolchain only.
+  It does not imply that all listed platforms or architectures
+  can be cross-compiled from the current machine.
 EOF
 }
 
@@ -124,11 +171,11 @@ normalize_architecture() {
             printf 'x86\n'
             ;;
 
-        arm64|aarch64)
+        arm64|aarch64|armv8*)
             printf 'arm64\n'
             ;;
 
-        armv7*)
+        armv7*|armhf)
             printf 'armv7\n'
             ;;
 
@@ -140,12 +187,12 @@ normalize_architecture() {
             printf 'armv5\n'
             ;;
 
-        ppc64le)
-            printf 'ppc64le\n'
+        ppc64le|powerpc64le)
+            printf 'powerpc64le\n'
             ;;
 
-        ppc64)
-            printf 'ppc64\n'
+        ppc64|powerpc64)
+            printf 'powerpc64\n'
             ;;
 
         powerpc|ppc)
@@ -154,6 +201,10 @@ normalize_architecture() {
 
         riscv64)
             printf 'riscv64\n'
+            ;;
+
+        riscv32)
+            printf 'riscv32\n'
             ;;
 
         mips64el)
@@ -190,6 +241,30 @@ normalize_architecture() {
     esac
 }
 
+detect_host_family() {
+    case "$(uname -s)" in
+        Darwin)
+            printf 'macos\n'
+            ;;
+
+        Linux)
+            printf 'linux\n'
+            ;;
+
+        FreeBSD|OpenBSD|NetBSD|DragonFly)
+            printf 'bsd\n'
+            ;;
+
+        MINGW*|MSYS*|CYGWIN*)
+            printf 'windows\n'
+            ;;
+
+        *)
+            printf 'unknown\n'
+            ;;
+    esac
+}
+
 parse_arguments() {
     while (($# > 0)); do
         case "$1" in
@@ -204,6 +279,9 @@ parse_arguments() {
             --profile)
                 (($# >= 2)) ||
                     die "--profile requires an argument"
+
+                [[ -n "$2" ]] ||
+                    die "--profile cannot be empty"
 
                 PROFILE="$2"
                 shift
@@ -260,6 +338,12 @@ parse_arguments() {
 }
 
 check_project() {
+    [[ -n "$PROJECT_ROOT" ]] ||
+        die "empty project root"
+
+    [[ "$PROJECT_ROOT" != "/" ]] ||
+        die "invalid project root"
+
     [[ -f "${PROJECT_ROOT}/dune-project" ]] ||
         die "dune-project not found"
 
@@ -268,6 +352,39 @@ check_project() {
 
     [[ -f "${PROJECT_ROOT}/bin/dune" ]] ||
         die "bin/dune not found"
+
+    [[ -d "${PROJECT_ROOT}/scripts" ]] ||
+        die "scripts directory not found"
+
+    local version
+
+    version="$(project_version)"
+
+    [[ -n "$version" ]] ||
+        die "unable to determine VFConf version"
+}
+
+check_builder_files() {
+    log "Checking native builder scripts"
+
+    local files=(
+        "${SCRIPT_DIR}/build-macos.sh"
+        "${SCRIPT_DIR}/build-linux.sh"
+        "${SCRIPT_DIR}/build-bsd.sh"
+        "${SCRIPT_DIR}/build-windows.ps1"
+    )
+
+    local file
+
+    for file in "${files[@]}"; do
+        if [[ -f "$file" ]]; then
+            if (( VERBOSE )); then
+                printf '  available: %s\n' "${file#"$PROJECT_ROOT"/}"
+            fi
+        else
+            warn "builder unavailable: ${file#"$PROJECT_ROOT"/}"
+        fi
+    done
 }
 
 run_diagnostics_gate() {
@@ -280,6 +397,7 @@ run_diagnostics_gate() {
 
     if [[ -x "${SCRIPT_DIR}/check-diagnostics.sh" ]]; then
         "${SCRIPT_DIR}/check-diagnostics.sh"
+
         log "Diagnostics gate passed"
         return 0
     fi
@@ -300,7 +418,7 @@ run_diagnostics_gate() {
     die "diagnostics requested but no diagnostics gate exists"
 }
 
-builder_arguments() {
+build_unix_arguments() {
     BUILDER_ARGS=()
 
     case "$PROFILE" in
@@ -328,8 +446,6 @@ builder_arguments() {
         BUILDER_ARGS+=("--test")
     fi
 
-    # The universal gate has already run. Child builders should not
-    # repeat the same diagnostics audit.
     BUILDER_ARGS+=("--no-diagnostics")
 
     if [[ -n "$JOBS" ]]; then
@@ -344,21 +460,32 @@ builder_arguments() {
     fi
 }
 
+print_target_header() {
+    local name="$1"
+
+    printf '\n'
+    printf '%s\n' '------------------------------------------------------------'
+    printf ' VFConf target: %s\n' "$name"
+    printf '%s\n' '------------------------------------------------------------'
+}
+
 run_bash_builder() {
     local name="$1"
     local script="$2"
 
-    echo
-    echo "------------------------------------------------------------"
-    printf ' VFConf target: %s\n' "$name"
-    echo "------------------------------------------------------------"
+    print_target_header "$name"
 
     [[ -f "$script" ]] ||
         die "${name} builder missing: $script"
 
-    chmod +x "$script"
+    command_exists bash ||
+        die "bash is required for ${name} builder"
 
-    "$script" "${BUILDER_ARGS[@]}"
+    build_unix_arguments
+
+    bash \
+        "$script" \
+        "${BUILDER_ARGS[@]}"
 
     log "${name}: OK"
 }
@@ -366,10 +493,7 @@ run_bash_builder() {
 run_windows_builder() {
     local script="$1"
 
-    echo
-    echo "------------------------------------------------------------"
-    echo " VFConf target: Windows"
-    echo "------------------------------------------------------------"
+    print_target_header "Windows"
 
     [[ -f "$script" ]] ||
         die "Windows builder missing: $script"
@@ -377,12 +501,43 @@ run_windows_builder() {
     command_exists pwsh ||
         die "PowerShell Core (pwsh) is required"
 
-    # Windows builder may have a different argument syntax.
-    # Do not blindly forward Unix builder flags.
-    pwsh \
-        -NoLogo \
-        -NoProfile \
-        -File "$script"
+    local args=(
+        "-NoLogo"
+        "-NoProfile"
+        "-File"
+        "$script"
+        "-Profile"
+        "$PROFILE"
+    )
+
+    if (( CLEAN )); then
+        args+=("-Clean")
+    fi
+
+    if (( RUN_TESTS )); then
+        args+=("-Test")
+    fi
+
+    if (( ! RUN_DIAGNOSTICS )); then
+        args+=("-NoDiagnostics")
+    else
+        # Diagnostics already ran at the orchestrator level.
+        # Prevent duplicate execution in the Windows child builder.
+        args+=("-NoDiagnostics")
+    fi
+
+    if [[ -n "$JOBS" ]]; then
+        args+=(
+            "-Jobs"
+            "$JOBS"
+        )
+    fi
+
+    if (( VERBOSE )); then
+        args+=("-VerboseBuild")
+    fi
+
+    pwsh "${args[@]}"
 
     log "Windows: OK"
 }
@@ -394,6 +549,65 @@ skip_target() {
     printf '  %-10s SKIPPED — %s\n' \
         "$name" \
         "$reason"
+}
+
+verify_distribution_output() {
+    local version="$1"
+    local host_family="$2"
+    local normalized_arch="$3"
+
+    log "Checking distribution output"
+
+    [[ -d "$DIST_DIR" ]] ||
+        die "distribution directory does not exist: $DIST_DIR"
+
+    local pattern=""
+
+    case "$host_family" in
+        macos)
+            pattern="${PROJECT_NAME}-${version}-macos-*"
+            ;;
+
+        linux)
+            pattern="${PROJECT_NAME}-${version}-linux-*"
+            ;;
+
+        bsd)
+            pattern="${PROJECT_NAME}-${version}-*bsd-*"
+            ;;
+
+        windows)
+            pattern="${PROJECT_NAME}-${version}-windows-*"
+            ;;
+
+        *)
+            return 0
+            ;;
+    esac
+
+    local result=""
+
+    result="$(
+        find "$DIST_DIR" \
+            -mindepth 1 \
+            -maxdepth 1 \
+            -type d \
+            -name "$pattern" \
+            -print \
+            -quit \
+            2>/dev/null || true
+    )"
+
+    if [[ -z "$result" ]]; then
+        warn "no distribution directory matching ${pattern}"
+        return 0
+    fi
+
+    log "Distribution detected: ${result#"$PROJECT_ROOT"/}"
+
+    if (( VERBOSE )); then
+        printf '  architecture requested: %s\n' "$normalized_arch"
+    fi
 }
 
 print_target_matrix() {
@@ -409,18 +623,16 @@ macOS
 
 Linux
   x86_64
-  i686
-  i586
-  i486
-  i386
-  aarch64
+  x86
+  arm64
   armv7
   armv6
   armv5
-  ppc64le
-  ppc64
+  powerpc64le
+  powerpc64
   powerpc
   riscv64
+  riscv32
   mips64
   mips64el
   mips
@@ -430,8 +642,8 @@ Linux
   s390x
 
 BSD
-  amd64
-  i386
+  amd64 / x86_64
+  i386 / x86
   arm64
   armv7
   armv6
@@ -448,89 +660,157 @@ BSD
   mips64el
 
 Windows
-  x64
+  x64 / x86_64
   x86
   arm64
 
-IMPORTANT
+============================================================
+ IMPORTANT
+============================================================
 
-  This matrix describes intended VFConf targets.
+This matrix describes intended VFConf release targets.
 
-  It does NOT mean that the OCaml compiler currently supports
-  every listed architecture.
+It does NOT guarantee that:
+  - OCaml supports every listed architecture,
+  - Dune supports every listed environment,
+  - VFConf has been tested on every target,
+  - a binary can be cross-compiled from the current host.
 
-  build-all.sh builds only for the CURRENT host/toolchain.
+build-all.sh builds only with the CURRENT native toolchain.
 
-  Complete multi-platform releases require:
-    - native CI runners
-    - virtual machines
-    - appropriate containers where possible
-    - or correctly configured cross-compilers
+Complete multi-platform releases require suitable:
+  - native CI runners,
+  - virtual machines,
+  - containers where applicable,
+  - or configured cross-compilers.
 
 ============================================================
 EOF
 }
 
+print_executable_matrix() {
+    printf '\n'
+    printf '%s\n' '============================================================'
+    printf ' VFConf executables (%d)\n' "${#VFCONF_EXECUTABLES[@]}"
+    printf '%s\n' '============================================================'
+
+    local entry
+    local public_name
+
+    for entry in "${VFCONF_EXECUTABLES[@]}"; do
+        public_name="${entry#*:}"
+        printf '  %s\n' "$public_name"
+    done
+
+    printf '%s\n' '============================================================'
+}
+
+print_summary() {
+    local version="$1"
+    local host_os="$2"
+    local host_arch="$3"
+    local normalized_arch="$4"
+    local host_family="$5"
+
+    printf '\n'
+    printf '%s\n' '============================================================'
+    printf '%s\n' ' VFConf build orchestration successful'
+    printf '%s\n' '============================================================'
+    printf ' Version:       %s\n' "$version"
+    printf ' Host OS:       %s\n' "$host_os"
+    printf ' Host family:   %s\n' "$host_family"
+    printf ' Host arch:     %s\n' "$host_arch"
+    printf ' Normalized:    %s\n' "$normalized_arch"
+    printf ' Profile:       %s\n' "$PROFILE"
+    printf ' Executables:   %d\n' "${#VFCONF_EXECUTABLES[@]}"
+    printf ' Distribution:  %s\n' "$DIST_DIR"
+
+    if (( RUN_DIAGNOSTICS )); then
+        printf ' Diagnostics:   passed\n'
+    else
+        printf ' Diagnostics:   skipped\n'
+    fi
+
+    if (( RUN_TESTS )); then
+        printf ' Tests:         passed\n'
+    else
+        printf ' Tests:         not requested\n'
+    fi
+
+    printf '%s\n' '============================================================'
+}
+
+on_error() {
+    local exit_code=$?
+    local line="${BASH_LINENO[0]:-unknown}"
+
+    error "build orchestration failed at line ${line} (exit ${exit_code})"
+
+    exit "$exit_code"
+}
+
 main() {
+    trap on_error ERR
+
     parse_arguments "$@"
 
     cd -- "$PROJECT_ROOT"
 
     check_project
+    check_builder_files
 
     local version
     local host_os
+    local host_family
     local host_arch
     local normalized_arch
 
     version="$(project_version)"
     host_os="$(uname -s)"
+    host_family="$(detect_host_family)"
     host_arch="$(uname -m)"
     normalized_arch="$(normalize_architecture "$host_arch")"
 
-    [[ -n "$version" ]] ||
-        die "unable to determine VFConf version"
-
     mkdir -p -- "$DIST_DIR"
 
-    echo "============================================================"
-    echo " VFConf universal build"
-    echo "============================================================"
-    printf ' Version:      %s\n' "$version"
-    printf ' Host OS:      %s\n' "$host_os"
-    printf ' Host arch:    %s\n' "$host_arch"
-    printf ' Normalized:   %s\n' "$normalized_arch"
-    printf ' Profile:      %s\n' "$PROFILE"
+    printf '%s\n' '============================================================'
+    printf '%s\n' ' VFConf universal build orchestrator'
+    printf '%s\n' '============================================================'
+    printf ' Version:       %s\n' "$version"
+    printf ' Host OS:       %s\n' "$host_os"
+    printf ' Host family:   %s\n' "$host_family"
+    printf ' Host arch:     %s\n' "$host_arch"
+    printf ' Normalized:    %s\n' "$normalized_arch"
+    printf ' Profile:       %s\n' "$PROFILE"
+    printf ' Executables:   %d\n' "${#VFCONF_EXECUTABLES[@]}"
 
     if (( RUN_TESTS )); then
-        echo " Tests:        enabled"
+        printf ' Tests:         enabled\n'
     else
-        echo " Tests:        disabled"
+        printf ' Tests:         disabled\n'
     fi
 
     if (( RUN_DIAGNOSTICS )); then
-        echo " Diagnostics:  enabled"
+        printf ' Diagnostics:   enabled\n'
     else
-        echo " Diagnostics:  disabled"
+        printf ' Diagnostics:   disabled\n'
     fi
 
-    echo "============================================================"
+    printf '%s\n' '============================================================'
 
-    # Final project-level gate before any release builder starts.
     run_diagnostics_gate
 
-    builder_arguments
-
-    echo
+    printf '\n'
     log "Starting host-native build"
 
-    case "$host_os" in
-        Darwin)
+    case "$host_family" in
+        macos)
             run_bash_builder \
                 "macOS" \
                 "${SCRIPT_DIR}/build-macos.sh"
 
-            echo
+            printf '\n'
+
             skip_target \
                 "Linux" \
                 "requires Linux"
@@ -541,15 +821,16 @@ main() {
 
             skip_target \
                 "Windows" \
-                "requires Windows toolchain"
+                "requires Windows"
             ;;
 
-        Linux)
+        linux)
             run_bash_builder \
                 "Linux" \
                 "${SCRIPT_DIR}/build-linux.sh"
 
-            echo
+            printf '\n'
+
             skip_target \
                 "macOS" \
                 "requires macOS"
@@ -560,15 +841,16 @@ main() {
 
             skip_target \
                 "Windows" \
-                "requires Windows toolchain"
+                "requires Windows"
             ;;
 
-        FreeBSD|OpenBSD|NetBSD|DragonFly)
+        bsd)
             run_bash_builder \
                 "BSD" \
                 "${SCRIPT_DIR}/build-bsd.sh"
 
-            echo
+            printf '\n'
+
             skip_target \
                 "macOS" \
                 "requires macOS"
@@ -579,14 +861,15 @@ main() {
 
             skip_target \
                 "Windows" \
-                "requires Windows toolchain"
+                "requires Windows"
             ;;
 
-        MINGW*|MSYS*|CYGWIN*)
+        windows)
             run_windows_builder \
                 "${SCRIPT_DIR}/build-windows.ps1"
 
-            echo
+            printf '\n'
+
             skip_target \
                 "macOS" \
                 "requires macOS"
@@ -605,29 +888,20 @@ main() {
             ;;
     esac
 
+    verify_distribution_output \
+        "$version" \
+        "$host_family" \
+        "$normalized_arch"
+
+    print_executable_matrix
     print_target_matrix
 
-    echo
-    echo "============================================================"
-    echo " VFConf build orchestration successful"
-    echo "============================================================"
-    printf ' Version:      %s\n' "$version"
-    printf ' Host:         %s %s\n" "$host_os" "$host_arch"
-    printf ' Distribution: %s\n' "$DIST_DIR"
-
-    if (( RUN_DIAGNOSTICS )); then
-        echo " Diagnostics:  passed"
-    else
-        echo " Diagnostics:  skipped"
-    fi
-
-    if (( RUN_TESTS )); then
-        echo " Tests:        passed"
-    else
-        echo " Tests:        not requested"
-    fi
-
-    echo "============================================================"
+    print_summary \
+        "$version" \
+        "$host_os" \
+        "$host_arch" \
+        "$normalized_arch" \
+        "$host_family"
 }
 
 main "$@"

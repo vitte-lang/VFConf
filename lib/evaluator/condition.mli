@@ -69,21 +69,25 @@ val compare_values :
 (* ---------------------------------------------------------- *)
 
 val resolve_reference :
+  Config.path ->
   Config.t ->
   Statement.reference ->
   Value.t Node.t
 
 val resolve_reference_value :
+  Config.path ->
   Config.t ->
   Statement.reference ->
   Value.t
 
 val reference_exists :
+  Config.path ->
   Config.t ->
   Statement.reference ->
   bool
 
 val reference_truthy :
+  Config.path ->
   Config.t ->
   Statement.reference ->
   bool
@@ -93,17 +97,20 @@ val reference_truthy :
 (* ---------------------------------------------------------- *)
 
 val evaluate :
+  Config.path ->
   Config.t ->
   Statement.condition Node.t ->
   bool
 
 val evaluate_opt :
+  Config.path ->
   Config.t ->
   Statement.condition Node.t ->
   bool option
 
 val evaluate_default :
   default:bool ->
+  Config.path ->
   Config.t ->
   Statement.condition Node.t ->
   bool
@@ -138,6 +145,7 @@ val diagnostic_of_error :
   Diagnostic.t
 
 val evaluate_diagnostic :
+  Config.path ->
   Config.t ->
   Statement.condition Node.t ->
   (bool, Diagnostic.t) result

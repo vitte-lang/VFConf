@@ -1,1 +1,1 @@
-lib/schema/rule.ml: Config Diagnostic Error Field Format List Node Printf String
+lib/schema/rule.ml: Config Error Field Format List Node Printf String Warning

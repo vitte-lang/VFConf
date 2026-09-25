@@ -12,7 +12,8 @@
  *   - validating *.vf.conf files;
  *   - tracking the include stack;
  *   - detecting recursive includes;
- *   - enforcing a maximum include depth.
+ *   - enforcing a maximum include depth;
+ *   - converting include failures to canonical diagnostics.
  *)
 
 type path = string
@@ -103,16 +104,13 @@ let normalize_components path =
     | [] ->
         List.rev stack
 
-    | ""
-      :: rest ->
+    | "" :: rest ->
         loop stack rest
 
-    | "."
-      :: rest ->
+    | "." :: rest ->
         loop stack rest
 
-    | ".."
-      :: rest ->
+    | ".." :: rest ->
         begin
           match stack with
           | []
@@ -462,6 +460,58 @@ let resolve_and_read
   validate_file path;
 
   (path, read_file path)
+
+(* ---------------------------------------------------------- *)
+(* Canonical diagnostics                                      *)
+(* ---------------------------------------------------------- *)
+
+let diagnostic_of_error = function
+  | Empty_path ->
+      Error.make
+        (Error.Invalid_include "")
+      |> Error.to_diagnostic
+
+  | Invalid_extension path ->
+      Error.make
+        (Error.Invalid_include path)
+      |> Error.to_diagnostic
+
+  | File_not_found path ->
+      Error.make
+        (Error.Include_not_found path)
+      |> Error.to_diagnostic
+
+  | Is_directory path ->
+      Error.make
+        (Error.Invalid_include path)
+      |> Error.to_diagnostic
+
+  | Include_cycle paths ->
+      Error.make
+        (Error.Include_cycle paths)
+      |> Error.to_diagnostic
+
+  | Maximum_depth_exceeded
+      {
+        maximum;
+        path;
+      } ->
+      Error.make
+        (Error.Include_depth_exceeded
+           {
+             maximum;
+             path;
+           })
+      |> Error.to_diagnostic
+
+  | Io_error { path; message } ->
+      Error.make
+        (Error.Cannot_read_file
+           {
+             path;
+             message;
+           })
+      |> Error.to_diagnostic
 
 (* ---------------------------------------------------------- *)
 (* Error formatting                                           *)

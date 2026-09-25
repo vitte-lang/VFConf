@@ -72,6 +72,9 @@ module Precedence = Vfconf__Precedence
 (** @canonical Vfconf.Printer *)
 module Printer = Vfconf__Printer
 
+(** @canonical Vfconf.Query *)
+module Query = Vfconf__Query
+
 (** @canonical Vfconf.Reference *)
 module Reference = Vfconf__Reference
 

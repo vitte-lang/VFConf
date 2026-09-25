@@ -39,6 +39,29 @@ JOBS=""
 
 DUNE_ARGS=()
 
+readonly VFCONF_EXECUTABLES=(
+    "main:vfconf"
+    "check:vfconf-check"
+    "dump:vfconf-dump"
+    "fmt:vfconf-fmt"
+    "fmt_all:vfconf-fmt-all"
+    "get:vfconf-get"
+    "set_cmd:vfconf-set"
+    "unset:vfconf-unset"
+    "exists:vfconf-exists"
+    "list_cmd:vfconf-list"
+    "tree_cmd:vfconf-tree"
+    "diff_cmd:vfconf-diff"
+    "merge_cmd:vfconf-merge"
+    "resolve_cmd:vfconf-resolve"
+    "eval_cmd:vfconf-eval"
+    "query_cmd:vfconf-query"
+    "diagnostics:vfconf-diagnostics"
+    "explain:vfconf-explain"
+    "stats:vfconf-stats"
+    "check_all:vfconf-check-all"
+)
+
 log() {
     printf '[vfconf-linux] %s\n' "$*"
 }
@@ -292,6 +315,7 @@ check_tools() {
         ocamllex
         menhir
         tar
+        install
     )
 
     local tool
@@ -343,12 +367,18 @@ build_project() {
 
     log "Building ${PROFILE}"
 
+    local targets=()
+    local entry
+    local build_name
+
+    for entry in "${VFCONF_EXECUTABLES[@]}"; do
+        build_name="${entry%%:*}"
+        targets+=("bin/${build_name}.exe")
+    done
+
     dune build \
         "${DUNE_ARGS[@]}" \
-        bin/main.exe \
-        bin/check.exe \
-        bin/dump.exe \
-        bin/fmt.exe
+        "${targets[@]}"
 
     log "Compilation completed"
 }
@@ -419,12 +449,17 @@ find_built_binary() {
 verify_binaries() {
     log "Verifying binaries"
 
+    local entry
     local binary
+    local public_name
     local path
 
-    for binary in main check dump fmt; do
+    for entry in "${VFCONF_EXECUTABLES[@]}"; do
+        binary="${entry%%:*}"
+        public_name="${entry#*:}"
+
         path="$(find_built_binary "$binary")" ||
-            die "compiled binary not found: ${binary}.exe"
+            die "compiled binary not found: ${binary}.exe (${public_name})"
 
         [[ -s "$path" ]] ||
             die "compiled binary is empty: $path"
@@ -433,7 +468,7 @@ verify_binaries() {
             die "compiled binary is not executable: $path"
     done
 
-    log "Binaries verified"
+    log "All ${#VFCONF_EXECUTABLES[@]} binaries verified"
 }
 
 copy_executable() {
@@ -447,6 +482,24 @@ copy_executable() {
     install -m 0755 \
         "$source" \
         "$destination"
+}
+
+install_all_executables() {
+    local destination="$1"
+    local entry
+    local build_name
+    local public_name
+
+    mkdir -p -- "$destination"
+
+    for entry in "${VFCONF_EXECUTABLES[@]}"; do
+        build_name="${entry%%:*}"
+        public_name="${entry#*:}"
+
+        copy_executable \
+            "$build_name" \
+            "${destination}/${public_name}"
+    done
 }
 
 copy_data() {
@@ -622,21 +675,8 @@ create_portable() {
     mkdir -p \
         "${destination}/bin"
 
-    copy_executable \
-        main \
-        "${destination}/bin/vfconf"
-
-    copy_executable \
-        check \
-        "${destination}/bin/vfconf-check"
-
-    copy_executable \
-        dump \
-        "${destination}/bin/vfconf-dump"
-
-    copy_executable \
-        fmt \
-        "${destination}/bin/vfconf-fmt"
+    install_all_executables \
+        "${destination}/bin"
 
     copy_data "$destination"
 
@@ -769,21 +809,8 @@ Description: Vitte Foundation Configuration Language
  VFConf is a structured configuration language using .vf.conf files.
 EOF
 
-    copy_executable \
-        main \
-        "${root}/usr/bin/vfconf"
-
-    copy_executable \
-        check \
-        "${root}/usr/bin/vfconf-check"
-
-    copy_executable \
-        dump \
-        "${root}/usr/bin/vfconf-dump"
-
-    copy_executable \
-        fmt \
-        "${root}/usr/bin/vfconf-fmt"
+    install_all_executables \
+        "${root}/usr/bin"
 
     local directory
 
@@ -874,6 +901,7 @@ main() {
     echo " Architecture: ${architecture}"
     echo " libc:         ${libc}"
     echo " Profile:      ${PROFILE}"
+    echo " Commands:     ${#VFCONF_EXECUTABLES[@]}"
     echo "============================================================"
 
     check_tools
@@ -887,7 +915,6 @@ main() {
     run_tests
     run_diagnostics
 
-    # Release artifacts are created only after validation.
     create_portable \
         "$version" \
         "$architecture" \
@@ -908,6 +935,7 @@ main() {
     printf '  architecture: %s\n' "$architecture"
     printf '  libc:         %s\n' "$libc"
     printf '  profile:      %s\n' "$PROFILE"
+    printf '  executables:  %s\n' "${#VFCONF_EXECUTABLES[@]}"
 
     if (( RUN_TESTS )); then
         printf '  tests:        passed\n'

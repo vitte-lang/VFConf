@@ -15,7 +15,6 @@ let version = "0.1.0"
 
 type severity =
 | Error
-| Warning
 
 type diagnostic = {
 severity : severity;
@@ -27,7 +26,6 @@ message : string;
 
 let severity_name = function
 | Error -> "error"
-| Warning -> "warning"
 
 let print_diagnostic diagnostic =
 Printf.eprintf
@@ -62,13 +60,17 @@ suffix_length
 = suffix
 
 let validate_extension filename =
-if not (has_suffix filename ".vf.conf") then
-fail filename "expected a '.vf.conf' file"
+if not (has_suffix filename ".vf.conf") then begin
+Printf.eprintf
+  "vfconf: %s: expected a '.vf.conf' file\n"
+  filename;
+exit 2
+end
 
 let validate_regular_file filename =
 if not (Sys.file_exists filename) then begin
 Printf.eprintf "vfconf: %s: file does not exist\n" filename;
-exit 2
+exit 3
 end;
 
 if Sys.is_directory filename then begin
@@ -89,7 +91,7 @@ Fun.protect
 with
 | Sys_error message ->
 Printf.eprintf "vfconf: %s\n" message;
-exit 2
+exit 3
 
 let validate_not_empty filename source =
 if String.trim source = "" then
@@ -139,6 +141,7 @@ filename
 
       let diagnostics =
         Vfconf.Validator.diagnostics validation
+        |> Vfconf.Validator.unique_diagnostics
         |> Vfconf.Diagnostic.sort
       in
 
@@ -181,8 +184,8 @@ Printf.printf
 \n
 Usage:\n
 \  vfconf-check FILE.vf.conf\n
-\  vfconf-check -help\n
-\  vfconf-check -version\n
+\  vfconf-check --help\n
+\  vfconf-check --version\n
 \n
 Exit status:\n
 \  0  configuration accepted\n
@@ -192,12 +195,14 @@ exit 0
 
 let main () =
 match Array.to_list Sys.argv with
-| [_; "-help"]
-| [_; "-h"] ->
+| [_; "-h"]
+| [_; "--help"]
+| [_; "-help"] ->
 print_help ()
 
-| [_; "-version"]
-| [_; "-V"] ->
+| [_; "-V"]
+| [_; "--version"]
+| [_; "-version"] ->
 print_version ()
 
 | [_; filename] ->
@@ -206,13 +211,13 @@ check_file filename
 | [_] ->
 Printf.eprintf
 "vfconf: missing input file\n
-Try 'vfconf-check -help' for usage.\n";
+Try 'vfconf-check --help' for usage.\n";
 exit 2
 
 | _ ->
 Printf.eprintf
 "vfconf: too many arguments\n
-Try 'vfconf-check -help' for usage.\n";
+Try 'vfconf-check --help' for usage.\n";
 exit 2
 
 let () =

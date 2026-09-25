@@ -45,6 +45,29 @@ JOBS=""
 
 DUNE_ARGS=()
 
+readonly VFCONF_EXECUTABLES=(
+    "main:vfconf"
+    "check:vfconf-check"
+    "dump:vfconf-dump"
+    "fmt:vfconf-fmt"
+    "fmt_all:vfconf-fmt-all"
+    "get:vfconf-get"
+    "set_cmd:vfconf-set"
+    "unset:vfconf-unset"
+    "exists:vfconf-exists"
+    "list_cmd:vfconf-list"
+    "tree_cmd:vfconf-tree"
+    "diff_cmd:vfconf-diff"
+    "merge_cmd:vfconf-merge"
+    "resolve_cmd:vfconf-resolve"
+    "eval_cmd:vfconf-eval"
+    "query_cmd:vfconf-query"
+    "diagnostics:vfconf-diagnostics"
+    "explain:vfconf-explain"
+    "stats:vfconf-stats"
+    "check_all:vfconf-check-all"
+)
+
 log() {
     printf '[vfconf-bsd] %s\n' "$*"
 }
@@ -380,12 +403,18 @@ build_project() {
 
     log "Building ${PROFILE}"
 
+    local targets=()
+    local entry
+    local build_name
+
+    for entry in "${VFCONF_EXECUTABLES[@]}"; do
+        build_name="${entry%%:*}"
+        targets+=("bin/${build_name}.exe")
+    done
+
     dune build \
         "${DUNE_ARGS[@]}" \
-        bin/main.exe \
-        bin/check.exe \
-        bin/dump.exe \
-        bin/fmt.exe
+        "${targets[@]}"
 
     log "Compilation completed"
 }
@@ -458,12 +487,17 @@ find_built_binary() {
 verify_binaries() {
     log "Verifying binaries"
 
+    local entry
     local binary
+    local public_name
     local path
 
-    for binary in main check dump fmt; do
+    for entry in "${VFCONF_EXECUTABLES[@]}"; do
+        binary="${entry%%:*}"
+        public_name="${entry#*:}"
+
         path="$(find_built_binary "$binary")" ||
-            die "compiled binary unavailable: ${binary}.exe"
+            die "compiled binary unavailable: ${binary}.exe (${public_name})"
 
         [[ -s "$path" ]] ||
             die "compiled binary is empty: $path"
@@ -472,7 +506,7 @@ verify_binaries() {
             die "compiled binary is not executable: $path"
     done
 
-    log "Binaries verified"
+    log "All ${#VFCONF_EXECUTABLES[@]} binaries verified"
 }
 
 copy_executable() {
@@ -487,6 +521,24 @@ copy_executable() {
         -m 0755 \
         "$source" \
         "$destination"
+}
+
+install_all_executables() {
+    local destination="$1"
+    local entry
+    local build_name
+    local public_name
+
+    mkdir -p -- "$destination"
+
+    for entry in "${VFCONF_EXECUTABLES[@]}"; do
+        build_name="${entry%%:*}"
+        public_name="${entry#*:}"
+
+        copy_executable \
+            "$build_name" \
+            "${destination}/${public_name}"
+    done
 }
 
 copy_runtime_data() {
@@ -667,21 +719,8 @@ create_portable_distribution() {
     mkdir -p \
         "${destination}/bin"
 
-    copy_executable \
-        main \
-        "${destination}/bin/vfconf"
-
-    copy_executable \
-        check \
-        "${destination}/bin/vfconf-check"
-
-    copy_executable \
-        dump \
-        "${destination}/bin/vfconf-dump"
-
-    copy_executable \
-        fmt \
-        "${destination}/bin/vfconf-fmt"
+    install_all_executables \
+        "${destination}/bin"
 
     copy_runtime_data "$destination"
     copy_documentation "$destination"
@@ -741,21 +780,8 @@ create_freebsd_package() {
         "${root}/usr/local/share/doc/vfconf" \
         "$output"
 
-    copy_executable \
-        main \
-        "${root}/usr/local/bin/vfconf"
-
-    copy_executable \
-        check \
-        "${root}/usr/local/bin/vfconf-check"
-
-    copy_executable \
-        dump \
-        "${root}/usr/local/bin/vfconf-dump"
-
-    copy_executable \
-        fmt \
-        "${root}/usr/local/bin/vfconf-fmt"
+    install_all_executables \
+        "${root}/usr/local/bin"
 
     local directory
 
@@ -854,6 +880,7 @@ main() {
     echo " BSD:          ${bsd}"
     echo " Architecture: ${architecture}"
     echo " Profile:      ${PROFILE}"
+    echo " Commands:     ${#VFCONF_EXECUTABLES[@]}"
     echo "============================================================"
 
     check_tools
@@ -867,7 +894,6 @@ main() {
     run_tests
     run_diagnostics
 
-    # Release artifacts only after all requested gates pass.
     create_portable_distribution \
         "$bsd" \
         "$architecture" \
@@ -901,6 +927,7 @@ main() {
     printf '  BSD:          %s\n' "$bsd"
     printf '  architecture: %s\n' "$architecture"
     printf '  profile:      %s\n' "$PROFILE"
+    printf '  executables:  %s\n' "${#VFCONF_EXECUTABLES[@]}"
 
     if (( RUN_TESTS )); then
         printf '  tests:        passed\n'

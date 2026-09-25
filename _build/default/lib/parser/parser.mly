@@ -127,21 +127,66 @@ let alpha_of_value value =
   | _ ->
       invalid_arg "RGBA alpha must be numeric"
 
-let rgb_component value =
-  match value.Node.value with
-  | Value.Integer value ->
-      let value = int_of_int64_checked value in
-      if value < 0 || value > 255 then
-        invalid_arg "RGB component outside 0..255";
-      value
-  | _ ->
-      invalid_arg "RGB component must be an integer"
 
-let rgba_alpha value =
-  let value = alpha_of_value value in
-  if value < 0.0 || value > 1.0 then
-    invalid_arg "RGBA alpha outside 0.0..1.0";
-  value
+let group_document_sections statements =
+  let flush_section output current =
+    match current with
+    | None ->
+        output
+    | Some (node, section, body_rev) ->
+        let grouped =
+          {
+            node with
+            Node.value =
+              Statement.Section
+                {
+                  section with
+                  Statement.body = List.rev body_rev;
+                };
+          }
+        in
+        grouped :: output
+  in
+
+  let rec loop output current = function
+    | [] ->
+        List.rev (flush_section output current)
+
+    | node :: rest ->
+        begin
+          match node.Node.value with
+          | Statement.Section section ->
+              let output =
+                flush_section output current
+              in
+              loop
+                output
+                (Some (node, section, []))
+                rest
+
+          | _ ->
+              begin
+                match current with
+                | None ->
+                    loop
+                      (node :: output)
+                      None
+                      rest
+
+                | Some (section_node, section, body_rev) ->
+                    loop
+                      output
+                      (Some
+                         ( section_node,
+                           section,
+                           node :: body_rev ))
+                      rest
+              end
+        end
+  in
+
+  loop [] None statements
+
 %}
 
 %token INCLUDE
@@ -196,9 +241,6 @@ let rgba_alpha value =
 
 %start <Statement.t Node.t list> document
 
-%right OR
-%right AND
-%right NOT
 
 %%
 
@@ -236,85 +278,45 @@ separator:
 ;
 
 statement:
-  assignment
+  non_section_statement
     {
-      located $startpos $endpos
-        (Statement.Assignment $1)
-    }
-| include_statement
-    {
-      located $startpos $endpos
-        (Statement.Include $1)
-    }
-| define_statement
-    {
-      located $startpos $endpos
-        (Statement.Define $1)
-    }
-| section
-    {
-      located $startpos $endpos
-        (Statement.Section $1)
-    }
-| conditional
-    {
-      located $startpos $endpos
-        (Statement.Conditional $1)
+      $1
     }
 ;
 
 document:
-  separators document_items EOF
+  separators flat_document_items EOF
     {
-      $2
+      group_document_sections $2
     }
 ;
 
-document_items:
+flat_document_items:
   /* empty */
     {
       []
     }
 
-| document_item separators document_items
+| flat_document_item separators flat_document_items
     {
       $1 :: $3
     }
 ;
 
-document_item:
-  ini_section
-    {
-      $1
-    }
-
-| non_section_statement
-    {
-      $1
-    }
-;
-
-ini_section:
-  LBRACKET path RBRACKET separators ini_section_body
+flat_document_item:
+  LBRACKET path RBRACKET
     {
       located $startpos $endpos
         (Statement.Section
           {
             Statement.name = $2;
-            body = $5;
+            body = [];
           })
     }
-;
 
-ini_section_body:
-  /* empty */
+| non_section_statement
     {
-      []
-    }
-
-| non_section_statement separators ini_section_body
-    {
-      $1 :: $3
+      $1
     }
 ;
 
@@ -343,7 +345,6 @@ non_section_statement:
         (Statement.Conditional $1)
     }
 ;
-
 
 assignment:
   path assignment_operator value
@@ -405,27 +406,6 @@ define_statement:
     }
 ;
 
-section:
-  LBRACKET path RBRACKET
-    {
-      {
-        Statement.name = $2;
-        body = [];
-      }
-    }
-
-| LBRACKET path RBRACKET
-  separators
-  LBRACE
-  block_statements
-  RBRACE
-    {
-      {
-        Statement.name = $2;
-        body = $6;
-      }
-    }
-;
 
 conditional:
   WHEN condition

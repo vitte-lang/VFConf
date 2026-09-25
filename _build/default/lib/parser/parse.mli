@@ -5,9 +5,18 @@
  * Public high-level parsing interface.
  *)
 
+(* ---------------------------------------------------------- *)
+(* Errors                                                     *)
+(* ---------------------------------------------------------- *)
+
+type io_error_kind =
+  | File_not_found
+  | Cannot_read_file
+
 type error_kind =
-  | Lexical_error
+  | Lexical_error of Lexer.error_kind
   | Syntax_error
+  | Io_error of io_error_kind
 
 type error = {
   kind : error_kind;
@@ -44,6 +53,10 @@ val error_of_positions :
   Lexing.position ->
   Lexing.position ->
   error
+
+val initial_span :
+  string ->
+  Node.span
 
 (* ---------------------------------------------------------- *)
 (* Lexbuf setup                                               *)

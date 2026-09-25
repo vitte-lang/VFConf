@@ -8,25 +8,59 @@
 
 open Parser
 
+type error_kind =
+  | Unexpected_character of char
+  | Invalid_token of string
+  | Unterminated_string
+  | Unterminated_comment
+  | Invalid_escape of string
+  | Invalid_number of string
+  | Invalid_color of string
+  | Invalid_duration of string
+  | Invalid_size of string
+
 exception Error of {
-  message : string;
+  kind : error_kind;
   start_pos : Lexing.position;
   end_pos : Lexing.position;
 }
 
-let error lexbuf message =
+let error lexbuf kind =
   raise
     (Error
        {
-         message;
+         kind;
          start_pos = Lexing.lexeme_start_p lexbuf;
          end_pos = Lexing.lexeme_end_p lexbuf;
        })
+
+let message_of_error_kind = function
+  | Unexpected_character character ->
+      Printf.sprintf "unexpected character '%c'" character
+  | Invalid_token token ->
+      Printf.sprintf "invalid token '%s'" token
+  | Unterminated_string ->
+      "unterminated string literal"
+  | Unterminated_comment ->
+      "unterminated block comment"
+  | Invalid_escape escape ->
+      Printf.sprintf "invalid escape sequence '%s'" escape
+  | Invalid_number value ->
+      Printf.sprintf "invalid number literal '%s'" value
+  | Invalid_color value ->
+      Printf.sprintf "invalid color literal '%s'" value
+  | Invalid_duration value ->
+      Printf.sprintf "invalid duration literal '%s'" value
+  | Invalid_size value ->
+      Printf.sprintf "invalid size literal '%s'" value
 
 let newline lexbuf =
   Lexing.new_line lexbuf
 
 let buffer = Buffer.create 128
+
+let string_start_position =
+  ref Lexing.dummy_pos
 
 let reset_buffer () =
   Buffer.clear buffer
@@ -92,7 +126,7 @@ let parse_unicode_escape lexbuf value =
   | Invalid_argument _
   | Failure _ ->
       error lexbuf
-        ("invalid Unicode escape '\\u" ^ value ^ "'")
+        (Invalid_escape ("\\u" ^ value))
 
 let remove_underscores value =
   String.concat "" (String.split_on_char '_' value)
@@ -101,31 +135,31 @@ let parse_integer lexbuf value =
   try
     Int64.of_string (remove_underscores value)
   with Failure _ ->
-    error lexbuf ("invalid integer literal '" ^ value ^ "'")
+    error lexbuf (Invalid_number value)
 
 let parse_float lexbuf value =
   try
     float_of_string (remove_underscores value)
   with Failure _ ->
-    error lexbuf ("invalid floating-point literal '" ^ value ^ "'")
+    error lexbuf (Invalid_number value)
 
 let parse_hex_integer lexbuf value =
   try
     Int64.of_string (remove_underscores value)
   with Failure _ ->
-    error lexbuf ("invalid hexadecimal integer literal '" ^ value ^ "'")
+    error lexbuf (Invalid_number value)
 
 let parse_binary_integer lexbuf value =
   try
     Int64.of_string (remove_underscores value)
   with Failure _ ->
-    error lexbuf ("invalid binary integer literal '" ^ value ^ "'")
+    error lexbuf (Invalid_number value)
 
 let parse_octal_integer lexbuf value =
   try
     Int64.of_string (remove_underscores value)
   with Failure _ ->
-    error lexbuf ("invalid octal integer literal '" ^ value ^ "'")
+    error lexbuf (Invalid_number value)
 
 let keyword_or_identifier value =
   match Keyword.of_string value with
@@ -166,7 +200,7 @@ let parse_color lexbuf value =
   then
     COLOR value
   else
-    error lexbuf ("invalid color literal '" ^ value ^ "'")
+    error lexbuf (Invalid_color value)
 
 let parse_duration lexbuf number unit_ =
   let amount =
@@ -389,6 +423,8 @@ rule token = parse
   | '"'
       {
         reset_buffer ();
+        string_start_position :=
+          Lexing.lexeme_start_p lexbuf;
         string_literal lexbuf
       }
 
@@ -525,16 +561,15 @@ rule token = parse
 
   | _ as character
       {
-        error
-          lexbuf
-          (Printf.sprintf
-             "unexpected character '%c'"
-             character)
+        error lexbuf
+          (Unexpected_character character)
       }
 
 and string_literal = parse
   | '"'
       {
+        lexbuf.Lexing.lex_start_p <-
+          !string_start_position;
         STRING (buffer_contents ())
       }
 
@@ -595,23 +630,21 @@ and string_literal = parse
 
   | '\\' (_ as character)
       {
-        error
-          lexbuf
-          (Printf.sprintf
-             "invalid escape sequence '\\%c'"
-             character)
+        error lexbuf
+          (Invalid_escape
+             (Printf.sprintf "\\%c" character))
       }
 
   | newline_sequence
       {
         error lexbuf
-          "unterminated string literal"
+          Unterminated_string
       }
 
   | eof
       {
         error lexbuf
-          "unterminated string literal"
+          Unterminated_string
       }
 
   | [^ '"' '\\' '\n' '\r']+ as value
@@ -644,7 +677,7 @@ and block_comment = parse
   | eof
       {
         error lexbuf
-          "unterminated block comment"
+          Unterminated_comment
       }
 
   | _

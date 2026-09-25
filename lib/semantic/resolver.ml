@@ -196,12 +196,59 @@ let resolve_direct_opt (context : context) path =
       None
 
 (* ---------------------------------------------------------- *)
+(* Scoped reference lookup                                    *)
+(* ---------------------------------------------------------- *)
+
+let parent_path path =
+  match List.rev path with
+  | [] ->
+      []
+  | _ :: rest ->
+      List.rev rest
+
+let scoped_reference_path
+    (context : context)
+    path =
+  match current_path context with
+  | None ->
+      path
+
+  | Some owner_path ->
+      let prefix =
+        parent_path owner_path
+      in
+
+      if prefix = [] then
+        path
+      else
+        let local_path =
+          prefix @ path
+        in
+
+        match
+          Environment.resolve_reference
+            context.environment
+            local_path
+        with
+        | Some _ ->
+            local_path
+
+        | None ->
+            path
+
+(* ---------------------------------------------------------- *)
 (* Recursive value resolution                                 *)
 (* ---------------------------------------------------------- *)
 
 let rec resolve_value (context : context) value =
   match value.Node.value with
   | Value.Reference path ->
+      let path =
+        scoped_reference_path
+          context
+          path
+      in
+
       let resolved =
         resolve context path
       in

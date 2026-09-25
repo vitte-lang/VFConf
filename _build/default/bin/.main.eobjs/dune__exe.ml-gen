@@ -3,17 +3,65 @@
 (** @canonical Dune__exe.Check *)
 module Check = Dune__exe__Check
 
+(** @canonical Dune__exe.Check_all *)
+module Check_all = Dune__exe__Check_all
+
 (** @canonical Dune__exe.Command_catalog *)
 module Command_catalog = Dune__exe__Command_catalog
+
+(** @canonical Dune__exe.Diagnostics *)
+module Diagnostics = Dune__exe__Diagnostics
+
+(** @canonical Dune__exe.Diff_cmd *)
+module Diff_cmd = Dune__exe__Diff_cmd
 
 (** @canonical Dune__exe.Dump *)
 module Dump = Dune__exe__Dump
 
+(** @canonical Dune__exe.Eval_cmd *)
+module Eval_cmd = Dune__exe__Eval_cmd
+
+(** @canonical Dune__exe.Exists *)
+module Exists = Dune__exe__Exists
+
 (** @canonical Dune__exe.Exit_code *)
 module Exit_code = Dune__exe__Exit_code
+
+(** @canonical Dune__exe.Explain *)
+module Explain = Dune__exe__Explain
 
 (** @canonical Dune__exe.Fmt *)
 module Fmt = Dune__exe__Fmt
 
+(** @canonical Dune__exe.Fmt_all *)
+module Fmt_all = Dune__exe__Fmt_all
+
+(** @canonical Dune__exe.Get *)
+module Get = Dune__exe__Get
+
+(** @canonical Dune__exe.List_cmd *)
+module List_cmd = Dune__exe__List_cmd
+
 (** @canonical Dune__exe.Main *)
 module Main = Dune__exe__Main
+
+(** @canonical Dune__exe.Merge_cmd *)
+module Merge_cmd = Dune__exe__Merge_cmd
+
+(** @canonical Dune__exe.Query_cmd *)
+module Query_cmd = Dune__exe__Query_cmd
+
+(** @canonical Dune__exe.Resolve_cmd *)
+module Resolve_cmd = Dune__exe__Resolve_cmd
+
+(** @canonical Dune__exe.Set_cmd *)
+module Set_cmd = Dune__exe__Set_cmd
+
+(** @canonical Dune__exe.Stats *)
+module Stats = Dune__exe__Stats
+
+(** @canonical Dune__exe.Tree_cmd *)
+module Tree_cmd = Dune__exe__Tree_cmd
+
+(** @canonical Dune__exe.Unset *)
+module Unset = Dune__exe__Unset

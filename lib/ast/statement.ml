@@ -453,7 +453,7 @@ let rec pp_condition formatter condition =
         Value.pp
         value.Node.value
 
-let rec pp formatter statement =
+let pp formatter statement =
   match statement with
   | Assignment assignment ->
       Format.fprintf

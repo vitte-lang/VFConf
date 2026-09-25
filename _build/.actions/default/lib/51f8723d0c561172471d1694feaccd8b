@@ -1,1 +1,1 @@
-lib/schema/schema.ml: Config Diagnostic Field Format List Map Option Printf Rule String
+lib/schema/schema.ml: Config Diagnostic Error Field Format List Map Option Printf Rule String

@@ -69,12 +69,44 @@ let has_warnings diagnostics =
     diagnostics
 
 let diagnostic_equal left right =
-  left.Diagnostic.severity = right.Diagnostic.severity
-  && left.Diagnostic.code = right.Diagnostic.code
+  left.Diagnostic.severity
+  = right.Diagnostic.severity
+  && left.Diagnostic.code
+     = right.Diagnostic.code
   && String.equal
        left.Diagnostic.message
        right.Diagnostic.message
-  && left.Diagnostic.span = right.Diagnostic.span
+  && left.Diagnostic.span
+     = right.Diagnostic.span
+
+let same_reference_diagnostic left right =
+  left.Diagnostic.severity
+  = Diagnostic.Error
+  && right.Diagnostic.severity
+     = Diagnostic.Error
+  && left.Diagnostic.code
+     = Some "VF0202"
+  && right.Diagnostic.code
+     = Some "VF0202"
+  && String.equal
+       left.Diagnostic.message
+       right.Diagnostic.message
+  && left.Diagnostic.span
+     = right.Diagnostic.span
+
+let remove_duplicate_reference_diagnostics
+    semantic_diagnostics
+    resolution_diagnostics =
+  List.filter
+    (fun resolution_diagnostic ->
+      not
+        (List.exists
+           (fun semantic_diagnostic ->
+             same_reference_diagnostic
+               semantic_diagnostic
+               resolution_diagnostic)
+           semantic_diagnostics))
+    resolution_diagnostics
 
 let unique_diagnostics diagnostics =
   let rec loop accumulator = function
@@ -87,14 +119,37 @@ let unique_diagnostics diagnostics =
             (diagnostic_equal diagnostic)
             accumulator
         then
-          loop accumulator rest
+          loop
+            accumulator
+            rest
         else
           loop
             (diagnostic :: accumulator)
             rest
   in
 
-  loop [] diagnostics
+  loop
+    []
+    diagnostics
+
+let filter_diagnostics options diagnostics =
+  if options.allow_warnings then
+    diagnostics
+  else
+    List.filter
+      (fun diagnostic ->
+        not (is_warning diagnostic))
+      diagnostics
+
+let normalize_diagnostics options diagnostics =
+  diagnostics
+  |> unique_diagnostics
+  |> filter_diagnostics options
+
+let internal_error message =
+  Error.make
+    (Error.Internal_error message)
+  |> Error.to_diagnostic
 
 (* ---------------------------------------------------------- *)
 (* Configuration construction                                 *)
@@ -131,7 +186,8 @@ let config_of_analyzer_result analysis =
 
 let analyze_document document =
   let analysis =
-    Analyzer.analyze document
+    Analyzer.analyze
+      document
   in
 
   let environment =
@@ -159,18 +215,26 @@ let resolve_environment options environment =
     if Resolver.has_errors resolution then
       (environment, resolution.Resolver.diagnostics)
     else
-      let environment =
-        try
+      try
+        let environment =
           Resolver.resolve_environment
             ~maximum_depth:
               options.maximum_reference_depth
             environment
-        with
-        | Resolver.Resolution_error error ->
-            environment
-      in
+        in
 
-      (environment, resolution.Resolver.diagnostics)
+        (environment, resolution.Resolver.diagnostics)
+
+      with
+      | Resolver.Resolution_error _ ->
+          let diagnostic =
+            internal_error
+              "reference resolution failed after successful reference analysis"
+          in
+
+          ( environment,
+            resolution.Resolver.diagnostics
+            @ [diagnostic] )
 
 (* ---------------------------------------------------------- *)
 (* Schema validation                                          *)
@@ -206,7 +270,8 @@ let validate
     ?schema
     document =
   let analysis, environment =
-    analyze_document document
+    analyze_document
+      document
   in
 
   let semantic_diagnostics =
@@ -219,11 +284,19 @@ let validate
       environment
   in
 
+  let resolution_diagnostics =
+    remove_duplicate_reference_diagnostics
+      semantic_diagnostics
+      resolution_diagnostics
+  in
+
   let config =
     if options.resolve_references then
-      config_of_environment environment
+      config_of_environment
+        environment
     else
-      config_of_analyzer_result analysis
+      config_of_analyzer_result
+        analysis
   in
 
   let config, schema_diagnostics =
@@ -237,7 +310,7 @@ let validate
     semantic_diagnostics
     @ resolution_diagnostics
     @ schema_diagnostics
-    |> unique_diagnostics
+    |> normalize_diagnostics options
   in
 
   {
@@ -252,7 +325,8 @@ let validate_config
     ?schema
     config =
   let environment =
-    Environment.of_config config
+    Environment.of_config
+      config
   in
 
   let environment, resolution_diagnostics =
@@ -263,7 +337,8 @@ let validate_config
 
   let config =
     if options.resolve_references then
-      config_of_environment environment
+      config_of_environment
+        environment
     else
       config
   in
@@ -278,7 +353,7 @@ let validate_config
   let diagnostics =
     resolution_diagnostics
     @ schema_diagnostics
-    |> unique_diagnostics
+    |> normalize_diagnostics options
   in
 
   {
@@ -305,10 +380,12 @@ let document result =
   result.document
 
 let result_errors result =
-  errors result.diagnostics
+  errors
+    result.diagnostics
 
 let result_warnings result =
-  warnings result.diagnostics
+  warnings
+    result.diagnostics
 
 let error_count result =
   List.length
@@ -319,10 +396,12 @@ let warning_count result =
     (result_warnings result)
 
 let result_has_errors result =
-  has_errors result.diagnostics
+  has_errors
+    result.diagnostics
 
 let result_has_warnings result =
-  has_warnings result.diagnostics
+  has_warnings
+    result.diagnostics
 
 let is_valid
     ?(allow_warnings = true)
@@ -406,13 +485,21 @@ let pp_error formatter error =
 (* ---------------------------------------------------------- *)
 
 let pp_summary formatter result =
+  let error_count =
+    error_count result
+  in
+
+  let warning_count =
+    warning_count result
+  in
+
   Format.fprintf
     formatter
     "%d error%s, %d warning%s"
-    (error_count result)
-    (if error_count result = 1 then "" else "s")
-    (warning_count result)
-    (if warning_count result = 1 then "" else "s")
+    error_count
+    (if error_count = 1 then "" else "s")
+    warning_count
+    (if warning_count = 1 then "" else "s")
 
 let pp formatter result =
   Format.fprintf

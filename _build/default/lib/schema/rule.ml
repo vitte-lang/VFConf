@@ -20,6 +20,7 @@ type violation = {
   severity : severity;
   path : Config.path option;
   span : Node.span option;
+  warning : Warning.kind option;
 }
 
 type validator =
@@ -113,6 +114,7 @@ let clear_path (context : context) =
 let violation
     ?path
     ?span
+    ?warning
     ?(severity = Error)
     ~rule
     message =
@@ -122,9 +124,11 @@ let violation
     severity;
     path;
     span;
+    warning;
   }
 
 let violation_for_entry
+    ?warning
     ?(severity = Error)
     ~rule
     message
@@ -135,6 +139,7 @@ let violation_for_entry
     severity;
     path = Some entry.Config.path;
     span = Some entry.Config.span;
+    warning;
   }
 
 (* ---------------------------------------------------------- *)
@@ -658,10 +663,23 @@ let diagnostic_of_violation (violation : violation) =
               violation.message))
 
   | Warning ->
-      Diagnostic.warning
-        ?span:violation.span
-        ~code:"VFW0401"
-        violation.message
+      begin
+        match violation.warning with
+        | Some kind ->
+            Warning.make
+              ?span:violation.span
+              kind
+            |> Warning.to_diagnostic
+
+        | None ->
+            Warning.make
+              ?span:violation.span
+              (Warning.Unknown_key
+                 (match violation.path with
+                  | Some path -> Config.string_of_path path
+                  | None -> violation.rule))
+            |> Warning.to_diagnostic
+      end
 
 let diagnostics violations =
   List.map

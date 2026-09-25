@@ -124,11 +124,13 @@ val reference_exists :
   bool
 
 val analyze_value :
+  string list ->
   state ->
   Value.t Node.t ->
   state
 
 val analyze_condition :
+  string list ->
   state ->
   Statement.condition Node.t ->
   state
@@ -160,11 +162,6 @@ val analyze_statement :
 (* ---------------------------------------------------------- *)
 (* Assignment semantics                                       *)
 (* ---------------------------------------------------------- *)
-
-val validate_assignment_operator :
-  state ->
-  Statement.t Node.t ->
-  state
 
 val validate_statement :
   Config.path ->

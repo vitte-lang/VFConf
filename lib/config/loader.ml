@@ -12,7 +12,8 @@
  *   - detect include cycles through Include;
  *   - flatten sections into configuration paths;
  *   - evaluate basic assignment operators;
- *   - produce Config.t.
+ *   - produce Config.t;
+ *   - convert loader failures to canonical VFConf diagnostics.
  *)
 
 type error =
@@ -89,6 +90,27 @@ let initialize_lexbuf filename source =
   lexbuf.Lexing.lex_curr_p <- position;
   lexbuf
 
+let span_of_location
+    ~filename
+    ~line
+    ~column =
+  let column =
+    max 0 column
+  in
+
+  let position =
+    Node.position
+      ~offset:0
+      ~line
+      ~column
+      ()
+  in
+
+  Node.span
+    ~filename
+    position
+    position
+
 (* ---------------------------------------------------------- *)
 (* File reading                                               *)
 (* ---------------------------------------------------------- *)
@@ -128,7 +150,12 @@ let parse_source
       lexbuf
 
   with
-  | Lexer.Error { message; start_pos; end_pos = _ } ->
+  | Lexer.Error
+      {
+        kind;
+        start_pos;
+        end_pos = _;
+      } ->
       let line =
         start_pos.Lexing.pos_lnum
       in
@@ -136,6 +163,10 @@ let parse_source
       let column =
         start_pos.Lexing.pos_cnum
         - start_pos.Lexing.pos_bol
+      in
+
+      let message =
+        Lexer.message_of_error_kind kind
       in
 
       raise
@@ -447,13 +478,34 @@ let compare_values operator left right =
             false
       end
 
+let find_condition_value
+    prefix
+    config
+    path =
+  let local_path =
+    prefix @ path
+  in
+
+  match
+    if prefix = [] then
+      None
+    else
+      Config.find_value_opt local_path config
+  with
+  | Some value ->
+      Some value
+
+  | None ->
+      Config.find_value_opt path config
+
 let rec evaluate_condition
+    prefix
     config
     condition =
   match condition.Node.value with
   | Statement.Reference path ->
       begin
-        match Config.find_value_opt path config with
+        match find_condition_value prefix config path with
         | Some (Value.Boolean value) ->
             value
 
@@ -473,6 +525,7 @@ let rec evaluate_condition
   | Statement.Not condition ->
       not
         (evaluate_condition
+           prefix
            config
            condition)
 
@@ -482,8 +535,8 @@ let rec evaluate_condition
         operator = Statement.And;
         right;
       } ->
-      evaluate_condition config left
-      && evaluate_condition config right
+      evaluate_condition prefix config left
+      && evaluate_condition prefix config right
 
   | Statement.Logical
       {
@@ -491,8 +544,8 @@ let rec evaluate_condition
         operator = Statement.Or;
         right;
       } ->
-      evaluate_condition config left
-      || evaluate_condition config right
+      evaluate_condition prefix config left
+      || evaluate_condition prefix config right
 
   | Statement.Compare
       {
@@ -501,7 +554,12 @@ let rec evaluate_condition
         value;
       } ->
       begin
-        match Config.find_value_opt reference config with
+        match
+          find_condition_value
+            prefix
+            config
+            reference
+        with
         | None ->
             false
 
@@ -590,6 +648,7 @@ and load_statement
       let selected =
         if
           evaluate_condition
+            prefix
             config
             conditional.Statement.condition
         then
@@ -758,6 +817,16 @@ let load_file filename =
     }
 
   with
+  | Include.Include_error
+      (Include.File_not_found path) ->
+      raise
+        (Load_error
+           (Io_error
+              {
+                filename = path;
+                message = "file not found";
+              }))
+
   | Include.Include_error error ->
       raise
         (Load_error
@@ -780,6 +849,137 @@ let files result =
 
 let config result =
   result.config
+
+(* ---------------------------------------------------------- *)
+(* Canonical diagnostics                                      *)
+(* ---------------------------------------------------------- *)
+
+let diagnostic_of_include_error = function
+  | Include.File_not_found path ->
+      Error.make
+        (Error.Include_not_found path)
+      |> Error.to_diagnostic
+
+  | Include.Include_cycle paths ->
+      Error.make
+        (Error.Include_cycle paths)
+      |> Error.to_diagnostic
+
+  | Include.Maximum_depth_exceeded
+      {
+        maximum;
+        path;
+      } ->
+      Error.make
+        (Error.Include_depth_exceeded
+           {
+             maximum;
+             path;
+           })
+      |> Error.to_diagnostic
+
+  | Include.Empty_path ->
+      Error.make
+        (Error.Invalid_include "")
+      |> Error.to_diagnostic
+
+  | Include.Invalid_extension path
+  | Include.Is_directory path ->
+      Error.make
+        (Error.Invalid_include path)
+      |> Error.to_diagnostic
+
+  | Include.Io_error { path; message } ->
+      Error.make
+        (Error.Cannot_read_file
+           {
+             path;
+             message;
+           })
+      |> Error.to_diagnostic
+
+let diagnostic_of_error = function
+  | Io_error { filename; message }
+    when String.equal message "file not found" ->
+      Error.make
+        (Error.File_not_found filename)
+      |> Error.to_diagnostic
+
+  | Io_error { filename; message } ->
+      Error.make
+        (Error.Cannot_read_file
+           {
+             path = filename;
+             message;
+           })
+      |> Error.to_diagnostic
+
+  | Lexing_error
+      {
+        filename;
+        line;
+        column;
+        message;
+      } ->
+      let span =
+        span_of_location
+          ~filename
+          ~line
+          ~column
+      in
+
+      Error.make
+        ~span
+        (Error.Invalid_token message)
+      |> Error.to_diagnostic
+
+  | Parsing_error
+      {
+        filename;
+        line;
+        column;
+        message;
+      } ->
+      let span =
+        span_of_location
+          ~filename
+          ~line
+          ~column
+      in
+
+      Error.make
+        ~span
+        (Error.Unexpected_token message)
+      |> Error.to_diagnostic
+
+  | Include_error error ->
+      diagnostic_of_include_error error
+
+  | Duplicate_key path ->
+      Error.make
+        (Error.Duplicate_key
+           (Config.string_of_path path))
+      |> Error.to_diagnostic
+
+  | Invalid_assignment { path; operator } ->
+      Error.make
+        (Error.Invalid_assignment
+           {
+             key =
+               Config.string_of_path path;
+             operator =
+               Statement.string_of_assignment_operator
+                 operator;
+           })
+      |> Error.to_diagnostic
+
+  | Unsupported_statement statement ->
+      Error.make
+        (Error.Evaluation_failed
+           (Printf.sprintf
+              "unsupported VFConf statement: %s"
+              statement))
+      |> Error.to_diagnostic
 
 (* ---------------------------------------------------------- *)
 (* Error formatting                                           *)

@@ -115,6 +115,7 @@ val compare_values :
   bool
 
 val evaluate_condition :
+  Config.path ->
   Config.t ->
   Statement.condition Node.t ->
   bool
@@ -185,6 +186,18 @@ val files :
 val config :
   result ->
   Config.t
+
+(* ---------------------------------------------------------- *)
+(* Canonical diagnostics                                      *)
+(* ---------------------------------------------------------- *)
+
+val diagnostic_of_include_error :
+  Include.error ->
+  Diagnostic.t
+
+val diagnostic_of_error :
+  error ->
+  Diagnostic.t
 
 (* ---------------------------------------------------------- *)
 (* Error formatting                                           *)

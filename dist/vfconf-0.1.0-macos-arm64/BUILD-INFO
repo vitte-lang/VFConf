@@ -1,0 +1,12 @@
+project=vfconf
+version=0.1.0
+os=macos
+macos_version=26.7.1
+macos_build=25G309
+architecture=arm64
+profile=release
+ocaml=5.5.1
+dune=3.24.2
+git_commit=ba6897ed37b460bd6118bea1f4063b6fc08ac30c
+git_dirty=true
+executables=20

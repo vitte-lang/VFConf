@@ -3,7 +3,7 @@
  * lib/config/include.mli
  *
  * Public interface for VFConf include resolution,
- * validation and cycle detection.
+ * validation, cycle detection and canonical diagnostics.
  *)
 
 type path = string
@@ -218,6 +218,14 @@ val resolve_and_read :
   context ->
   path ->
   path * string
+
+(* ---------------------------------------------------------- *)
+(* Canonical diagnostics                                      *)
+(* ---------------------------------------------------------- *)
+
+val diagnostic_of_error :
+  error ->
+  Diagnostic.t
 
 (* ---------------------------------------------------------- *)
 (* Error formatting                                           *)

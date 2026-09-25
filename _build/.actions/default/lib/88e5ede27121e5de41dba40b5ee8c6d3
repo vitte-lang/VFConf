@@ -1,1 +1,1 @@
-lib/config/include.mli: Format
+lib/config/include.mli: Diagnostic Format

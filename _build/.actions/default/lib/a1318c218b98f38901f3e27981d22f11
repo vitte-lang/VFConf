@@ -1,1 +1,1 @@
-lib/semantic/analyzer.ml: Config Diagnostic Error Format List Map Node Option Set Statement String Value Warning
+lib/semantic/analyzer.ml: Condition Config Diagnostic Error Format List Map Node Option Set Statement String Value Warning

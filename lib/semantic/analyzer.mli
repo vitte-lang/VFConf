@@ -24,6 +24,7 @@ type state = {
   symbols : symbol String_map.t;
   definitions : symbol String_map.t;
   schema_fields : String_set.t;
+  referenced_definitions : String_set.t;
   diagnostics : Diagnostic.t list;
 }
 
@@ -190,6 +191,11 @@ val is_valid :
   bool
 
 val diagnostics :
+  result ->
+  Diagnostic.t list
+
+val unused_diagnostics :
+  roots:Config.path list ->
   result ->
   Diagnostic.t list
 

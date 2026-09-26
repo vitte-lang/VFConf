@@ -24,6 +24,109 @@ let default_options =
     sort_object_keys = false;
   }
 
+let contains_word source expected =
+  let is_word = function
+    | 'A' .. 'Z' | 'a' .. 'z' | '0' .. '9' | '_' | '-' -> true
+    | _ -> false
+  in
+  let length = String.length source in
+  let expected_length = String.length expected in
+  let rec search offset =
+    if offset + expected_length > length then false
+    else if
+      String.sub source offset expected_length = expected
+      && (offset = 0 || not (is_word source.[offset - 1]))
+      &&
+      (offset + expected_length = length
+       || not (is_word source.[offset + expected_length]))
+    then true
+    else search (offset + 1)
+  in
+  search 0
+
+let has_uppercase_hex_color source =
+  let is_hex = function
+    | '0' .. '9' | 'a' .. 'f' | 'A' .. 'F' -> true
+    | _ -> false
+  in
+  let is_upper_hex = function
+    | 'A' .. 'F' -> true
+    | _ -> false
+  in
+  let length = String.length source in
+  let rec scan index =
+    if index >= length then false
+    else if source.[index] <> '#' then scan (index + 1)
+    else
+      let rec color cursor uppercase =
+        if cursor < length && is_hex source.[cursor] then
+          color (cursor + 1) (uppercase || is_upper_hex source.[cursor])
+        else
+          let digits = cursor - index - 1 in
+          uppercase && List.mem digits [3; 4; 6; 8]
+      in
+      color (index + 1) false || scan (index + 1)
+  in
+  scan 0
+
+let literal_tokens source =
+  let is_literal_character = function
+    | 'A' .. 'Z' | 'a' .. 'z' | '0' .. '9' | '.' | '_' -> true
+    | _ -> false
+  in
+  let length = String.length source in
+  let rec collect offset current tokens =
+    if offset = length then
+      if current = "" then List.rev tokens else List.rev (current :: tokens)
+    else if is_literal_character source.[offset] then
+      collect (offset + 1) (current ^ String.make 1 source.[offset]) tokens
+    else if current = "" then
+      collect (offset + 1) "" tokens
+    else
+      collect (offset + 1) "" (current :: tokens)
+  in
+  collect 0 "" []
+
+let split_number_unit token =
+  let length = String.length token in
+  let rec boundary index =
+    if index >= length then index
+    else
+      match token.[index] with
+      | '0' .. '9' | '.' | '_' -> boundary (index + 1)
+      | _ -> index
+  in
+  let index = boundary 0 in
+  if index = 0 || index = length then None
+  else
+    let number =
+      String.sub token 0 index
+      |> String.split_on_char '_'
+      |> String.concat ""
+      |> float_of_string_opt
+    in
+    Option.map
+      (fun number -> number, String.sub token index (length - index))
+      number
+
+let non_canonical_size source =
+  literal_tokens source
+  |> List.find_map (fun token ->
+       match split_number_unit token with
+       | Some (amount, "B") when amount >= 1000.0 -> Some token
+       | Some (amount, ("KB" | "MB" | "GB")) when amount >= 1000.0 -> Some token
+       | Some (amount, ("KiB" | "MiB" | "GiB")) when amount >= 1024.0 -> Some token
+       | _ -> None)
+
+let non_canonical_duration source =
+  literal_tokens source
+  |> List.find_map (fun token ->
+       match split_number_unit token with
+       | Some (amount, ("ns" | "us" | "ms")) when amount >= 1000.0 -> Some token
+       | Some (amount, "s") when amount >= 60.0 -> Some token
+       | Some (amount, "min") when amount >= 60.0 -> Some token
+       | _ -> None)
+
 (* ---------------------------------------------------------- *)
 (* Basic helpers                                              *)
 (* ---------------------------------------------------------- *)
@@ -598,6 +701,53 @@ let format_document
 
 let format =
   format_document
+
+let diagnostics_of_source
+    ?(filename = "<memory>")
+    source
+    document =
+  let span =
+    Node.span
+      ~filename
+      Node.dummy_position
+      Node.dummy_position
+  in
+  let warnings = ref [] in
+  let add warning =
+    warnings := Warning.to_diagnostic warning :: !warnings
+  in
+  if contains_word source "on" then
+    begin
+      add (Warning.non_canonical_boolean ~span "on");
+      add (Warning.deprecated_value ~span ~replacement:"true" "on");
+      add (Warning.deprecated_syntax ~span ~replacement:"true" "on")
+    end;
+  if contains_word source "off" then
+    begin
+      add (Warning.non_canonical_boolean ~span "off");
+      add (Warning.deprecated_value ~span ~replacement:"false" "off");
+      add (Warning.deprecated_syntax ~span ~replacement:"false" "off")
+    end;
+  begin
+    match non_canonical_size source with
+    | Some value -> add (Warning.non_canonical_size ~span value)
+    | None -> ()
+  end;
+  begin
+    match non_canonical_duration source with
+    | Some value -> add (Warning.non_canonical_duration ~span value)
+    | None -> ()
+  end;
+  if has_uppercase_hex_color source then
+    add (Warning.non_canonical_color ~span "uppercase hexadecimal color");
+  if String.contains source '\r' then
+    add
+      (Warning.compatibility_issue
+         ~span
+         "CRLF line endings are normalized to LF");
+  if not (String.equal source (format document)) then
+    add (Warning.style_issue ~span "source is not canonically formatted");
+  List.rev !warnings
 
 (* ---------------------------------------------------------- *)
 (* Output                                                     *)

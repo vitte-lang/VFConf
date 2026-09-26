@@ -17,6 +17,8 @@ type error =
   | Invalid_extension of path
   | File_not_found of path
   | Is_directory of path
+  | Symlink_not_allowed of path
+  | Outside_root of { root : path; path : path }
   | Include_cycle of path list
   | Maximum_depth_exceeded of {
       maximum : int;
@@ -35,6 +37,8 @@ exception Include_error of error
 
 type context = {
   root : path;
+  security_root : path;
+  allow_symlinks : bool;
   stack : path list;
   maximum_depth : int;
 }
@@ -91,6 +95,15 @@ val canonicalize :
   path ->
   path
 
+val path_is_within :
+  root:path ->
+  path ->
+  bool
+
+val path_contains_symlink :
+  path ->
+  bool
+
 (* ---------------------------------------------------------- *)
 (* Filesystem validation                                      *)
 (* ---------------------------------------------------------- *)
@@ -109,11 +122,15 @@ val validate_file :
 
 val create_context :
   ?maximum_depth:int ->
+  ?security_root:path ->
+  ?allow_symlinks:bool ->
   path ->
   context
 
 val empty_context :
   ?maximum_depth:int ->
+  ?security_root:path ->
+  ?allow_symlinks:bool ->
   unit ->
   context
 
@@ -132,6 +149,14 @@ val current :
 val root :
   context ->
   path
+
+val security_root :
+  context ->
+  path
+
+val allows_symlinks :
+  context ->
+  bool
 
 val stack :
   context ->

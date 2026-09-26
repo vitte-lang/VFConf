@@ -423,7 +423,23 @@ run_diagnostics_gate() {
         else
             fail "diagnostics static audit"
         fi
+    fi
 
+    if [[ -f "${PROJECT_ROOT}/scripts/audit-diagnostic-producers.py" ]]; then
+        if ! command_exists python3; then
+            fail "python3 required for diagnostic producer audit"
+            return 0
+        fi
+
+        if python3 "${PROJECT_ROOT}/scripts/audit-diagnostic-producers.py"; then
+            pass "diagnostic producer audit"
+        else
+            fail "diagnostic producer audit"
+        fi
+    fi
+
+    if [[ -f "${PROJECT_ROOT}/scripts/audit-diagnostics.py" ]] ||
+       [[ -f "${PROJECT_ROOT}/scripts/audit-diagnostic-producers.py" ]]; then
         return 0
     fi
 
@@ -484,6 +500,10 @@ is_expected_invalid_file() {
  
      case "$relative" in
          languages/error.vf.conf)
+             return 0
+             ;;
+
+         tests/diagnostics/*)
              return 0
              ;;
  
@@ -552,10 +572,11 @@ validate_vfconf_files() {
     while IFS= read -r -d '' file; do
         count=$((count + 1))
 
-        set +e
-        "$checker" "$file" >/dev/null 2>&1
-        status=$?
-        set -e
+        if "$checker" "$file" >/dev/null 2>&1; then
+            status=0
+        else
+            status=$?
+        fi
 
         if is_expected_invalid_file "$file"; then
             invalid_count=$((invalid_count + 1))
@@ -768,10 +789,11 @@ run_cli_smoke_tests() {
             continue
         fi
 
-        set +e
-        "$executable" --help >/dev/null 2>&1
-        status=$?
-        set -e
+        if "$executable" --help >/dev/null 2>&1; then
+            status=0
+        else
+            status=$?
+        fi
 
         if (( status == 0 )); then
             pass "CLI help: ${public_name}"

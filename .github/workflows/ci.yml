@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            ocaml: '5.1'
+          - os: ubuntu-latest
+            ocaml: '5.2'
+          - os: macos-latest
+            ocaml: '5.1'
+          - os: macos-latest
+            ocaml: '5.2'
+          - os: windows-latest
+            ocaml: '5.1'
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: ${{ matrix.ocaml }}
+          dune-cache: true
+      - run: opam install . --deps-only --with-test
+      - run: opam exec -- dune build @all
+      - run: opam exec -- dune runtest
+      - run: opam exec -- dune build @fmt
+      - run: python3 scripts/audit-diagnostic-producers.py
+        if: runner.os != 'Windows'
+      - run: bash scripts/test.sh --no-format
+        if: runner.os != 'Windows'
+      - run: opam exec -- dune build fuzz/parser_fuzz.exe fuzz/lexer_fuzz.exe
+      - run: scripts/build-macos.sh --no-pkg --no-clean --no-diagnostics
+        if: runner.os == 'macOS'

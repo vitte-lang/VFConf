@@ -233,12 +233,12 @@ let sign = ['+' '-']
 let exponent =
   ['e' 'E'] sign? digits
 
-let decimal_float =
+let decimal_float = sign? (
     digits '.' digits? exponent?
   | '.' digits exponent?
-  | digits exponent
+  | digits exponent)
 
-let decimal_integer = digits
+let decimal_integer = sign? digits
 let hexadecimal_integer = "0x" hex_digits | "0X" hex_digits
 let binary_integer = "0b" bin_digits | "0B" bin_digits
 let octal_integer = "0o" oct_digits | "0O" oct_digits
@@ -283,9 +283,24 @@ rule token = parse
         NEWLINE
       }
 
-  | '#' [^ '\n' '\r']*
+  | color_literal as value
+      {
+        parse_color lexbuf value
+      }
+
+  | '#' whitespace+ [^ '\n' '\r']*
       {
         token lexbuf
+      }
+
+  | '#'
+      {
+        token lexbuf
+      }
+
+  | '#' [^ ' ' '\t' '\012' '\n' '\r']+ as value
+      {
+        error lexbuf (Invalid_color value)
       }
 
   | "//" [^ '\n' '\r']*
@@ -426,11 +441,6 @@ rule token = parse
         string_start_position :=
           Lexing.lexeme_start_p lexbuf;
         string_literal lexbuf
-      }
-
-  | color_literal as value
-      {
-        parse_color lexbuf value
       }
 
   | hexadecimal_integer as value

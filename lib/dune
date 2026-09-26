@@ -12,48 +12,40 @@
   Node
   Value
   Statement
-
   Lexer
   Token
   Keyword
-
   Parser
   Parse
   Precedence
-
   Source
   Position
   Span
-
-  Diagnostic Diagnostic_registry
+  Diagnostic
+  Diagnostic_registry
   Error
   Warning
   Reporter
-
   Analyzer
   Validator
   Resolver
   Environment
-
   Config
   Loader
   Include
   Merge
-
   Evaluator
   Condition
   Reference
-
   Formatter
+  Source_formatter
   Printer
 
+  Api
   Schema
   Field
   Rule
-
   Path
   String_utils
   File_utils
   Query))
-
-

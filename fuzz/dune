@@ -1,0 +1,9 @@
+(executable
+ (name parser_fuzz)
+ (modules parser_fuzz)
+ (libraries vfconf unix))
+
+(executable
+ (name lexer_fuzz)
+ (modules lexer_fuzz)
+ (libraries vfconf unix))

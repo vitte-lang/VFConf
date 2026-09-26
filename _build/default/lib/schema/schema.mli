@@ -348,6 +348,11 @@ val apply_defaults :
   Config.t ->
   Config.t
 
+val warning_diagnostics :
+  t ->
+  Config.t ->
+  Diagnostic.t list
+
 (* ---------------------------------------------------------- *)
 (* Validation                                                 *)
 (* ---------------------------------------------------------- *)

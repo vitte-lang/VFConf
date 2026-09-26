@@ -13,10 +13,20 @@ type environment = {
   definitions : definition String_map.t;
 }
 
+type options = {
+  strict_types : bool;
+  allow_numeric_conversions : bool;
+  maximum_depth : int;
+  maximum_operations : int;
+}
+
+val default_options : options
+
 type state = {
   config : Config.t;
   environment : environment;
   diagnostics : Diagnostic.t list;
+  options : options;
 }
 
 type error =
@@ -28,6 +38,10 @@ type error =
       operator : Statement.assignment_operator;
     }
   | Invalid_condition of Condition.error
+  | Invalid_value of string
+  | Division_by_zero
+  | Type_mismatch of { expected : string; found : string }
+  | Limit_exceeded of { limit : string; maximum : int }
   | Unsupported_statement of string
 
 exception Evaluation_error of error
@@ -41,6 +55,7 @@ val empty_environment :
 
 val empty_state :
   ?filename:string ->
+  ?options:options ->
   unit ->
   state
 
@@ -138,6 +153,26 @@ val evaluate_value :
   Value.t Node.t ->
   Value.t Node.t
 
+val divide_numbers :
+  float ->
+  float ->
+  float
+
+val value_type :
+  Value.t ->
+  string
+
+val numeric_pair :
+  Value.t ->
+  Value.t ->
+  bool
+
+val ensure_compatible :
+  state ->
+  Value.t Node.t ->
+  Value.t Node.t ->
+  unit
+
 (* ---------------------------------------------------------- *)
 (* Assignment operations                                      *)
 (* ---------------------------------------------------------- *)
@@ -191,16 +226,19 @@ val evaluate_statement :
 
 val evaluate_document :
   ?filename:string ->
+  ?options:options ->
   Statement.t Node.t list ->
   state
 
 val evaluate :
   ?filename:string ->
+  ?options:options ->
   Statement.t Node.t list ->
   Config.t
 
 val evaluate_with_diagnostics :
   ?filename:string ->
+  ?options:options ->
   Statement.t Node.t list ->
   (Config.t * Diagnostic.t list, error) result
 

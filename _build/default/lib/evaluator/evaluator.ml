@@ -17,10 +17,26 @@ type environment = {
   definitions : definition String_map.t;
 }
 
+type options = {
+  strict_types : bool;
+  allow_numeric_conversions : bool;
+  maximum_depth : int;
+  maximum_operations : int;
+}
+
+let default_options =
+  {
+    strict_types = true;
+    allow_numeric_conversions = true;
+    maximum_depth = 128;
+    maximum_operations = 100_000;
+  }
+
 type state = {
   config : Config.t;
   environment : environment;
   diagnostics : Diagnostic.t list;
+  options : options;
 }
 
 type error =
@@ -32,6 +48,10 @@ type error =
       operator : Statement.assignment_operator;
     }
   | Invalid_condition of Condition.error
+  | Invalid_value of string
+  | Division_by_zero
+  | Type_mismatch of { expected : string; found : string }
+  | Limit_exceeded of { limit : string; maximum : int }
   | Unsupported_statement of string
 
 exception Evaluation_error of error
@@ -41,11 +61,14 @@ let empty_environment =
     definitions = String_map.empty;
   }
 
-let empty_state ?filename () =
+let empty_state ?filename ?(options = default_options) () =
+  if options.maximum_depth < 1 || options.maximum_operations < 1 then
+    invalid_arg "Evaluator options require positive limits";
   {
     config = Config.empty ?filename ();
     environment = empty_environment;
     diagnostics = [];
+    options;
   }
 
 (* ---------------------------------------------------------- *)
@@ -132,6 +155,11 @@ let add_diagnostics diagnostics state =
 let diagnostics state =
   Diagnostic.sort
     (List.rev state.diagnostics)
+
+let add_warning ?span kind state =
+  Warning.make ?span kind
+  |> Warning.to_diagnostic
+  |> fun diagnostic -> add_diagnostic diagnostic state
 
 (* ---------------------------------------------------------- *)
 (* Reference resolution                                       *)
@@ -225,6 +253,28 @@ let rec evaluate_value state value =
         (Node.make
            (Value.Object entries))
 
+  | Value.Float number
+    when classify_float number = FP_nan
+         || classify_float number = FP_infinite ->
+      raise (Evaluation_error (Invalid_value "non-finite floating-point value"))
+
+  | Value.Color (Value.Rgb {red; green; blue})
+    when List.exists (fun channel -> channel < 0 || channel > 255) [red; green; blue] ->
+      raise (Evaluation_error (Invalid_value "RGB channel outside 0..255"))
+
+  | Value.Color (Value.Rgba {red; green; blue; alpha})
+    when List.exists (fun channel -> channel < 0 || channel > 255) [red; green; blue]
+         || alpha < 0.0 || alpha > 1.0
+         || classify_float alpha = FP_nan ->
+      raise (Evaluation_error (Invalid_value "RGBA component outside its valid range"))
+
+  | Value.Duration (amount, _)
+  | Value.Size (amount, _)
+    when amount < 0.0
+         || classify_float amount = FP_nan
+         || classify_float amount = FP_infinite ->
+      raise (Evaluation_error (Invalid_value "negative or non-finite quantity"))
+
   | Value.String _
   | Value.Integer _
   | Value.Float _
@@ -234,6 +284,55 @@ let rec evaluate_value state value =
   | Value.Duration _
   | Value.Size _ ->
       value
+
+let divide_numbers left right =
+  if right = 0.0 then
+    raise (Evaluation_error Division_by_zero)
+  else
+    left /. right
+
+let value_type = function
+  | Value.String _ -> "string"
+  | Value.Integer _ -> "integer"
+  | Value.Float _ -> "float"
+  | Value.Boolean _ -> "boolean"
+  | Value.Null -> "null"
+  | Value.Array _ -> "array"
+  | Value.Object _ -> "object"
+  | Value.Reference _ -> "reference"
+  | Value.Color _ -> "color"
+  | Value.Duration _ -> "duration"
+  | Value.Size _ -> "size"
+
+let numeric_pair left right =
+  match left, right with
+  | Value.Integer _, Value.Float _
+  | Value.Float _, Value.Integer _ -> true
+  | _ -> false
+
+let ensure_compatible state left right =
+  let left_type = value_type left.Node.value in
+  let right_type = value_type right.Node.value in
+  if
+    state.options.strict_types
+    && not (String.equal left_type right_type)
+    && not
+         (state.options.allow_numeric_conversions
+          && numeric_pair left.Node.value right.Node.value)
+  then
+    raise
+      (Evaluation_error
+         (Type_mismatch {expected = left_type; found = right_type}))
+
+let add_conversion_warning state left right =
+  if numeric_pair left.Node.value right.Node.value then
+    add_warning
+      ~span:right.Node.span
+      (Warning.Implicit_conversion
+         {from_type = "integer"; to_type = "float"})
+      state
+  else
+    state
 
 (* ---------------------------------------------------------- *)
 (* Assignment operations                                      *)
@@ -373,6 +472,23 @@ let apply_assignment
     value =
   match operator with
   | Statement.Assign ->
+      let state =
+        match Config.find_opt path state.config with
+        | None -> state
+        | Some current ->
+            ensure_compatible state current value;
+            let state = add_conversion_warning state current value in
+            if Value.equal current.Node.value value.Node.value then
+            add_warning
+              ~span:value.Node.span
+              (Warning.Redundant_assignment (path_to_string path))
+              state
+            else
+            add_warning
+              ~span:value.Node.span
+              (Warning.Overwritten_value (path_to_string path))
+              state
+      in
       {
         state with
         config =
@@ -406,9 +522,11 @@ let apply_assignment
               operator
 
         | Some current ->
+            ensure_compatible state current value;
             begin
               match append_value current value with
               | Some result ->
+                  let state = add_conversion_warning state current value in
                   {
                     state with
                     config =
@@ -434,9 +552,11 @@ let apply_assignment
               operator
 
         | Some current ->
+            ensure_compatible state current value;
             begin
               match subtract_value current value with
               | Some result ->
+                  let state = add_conversion_warning state current value in
                   {
                     state with
                     config =
@@ -458,7 +578,31 @@ let apply_assignment
 (* ---------------------------------------------------------- *)
 
 let evaluate_condition prefix state condition =
+  let rec validate condition =
+    match condition.Node.value with
+    | Statement.Boolean _ -> ()
+    | Statement.Reference reference ->
+        let value = Condition.resolve_reference prefix state.config reference in
+        if state.options.strict_types then
+          begin
+            match value.Node.value with
+            | Value.Boolean _ -> ()
+            | found ->
+                raise
+                  (Evaluation_error
+                     (Type_mismatch
+                        {expected = "boolean"; found = value_type found}))
+          end
+    | Statement.Not nested -> validate nested
+    | Statement.Logical {left; right; _} ->
+        validate left;
+        validate right
+    | Statement.Compare {reference; value; _} ->
+        let left = Condition.resolve_reference prefix state.config reference in
+        ensure_compatible state left value
+  in
   try
+    validate condition;
     Condition.evaluate
       prefix
       state.config
@@ -570,12 +714,120 @@ and evaluate_statement
 (* Document evaluation                                        *)
 (* ---------------------------------------------------------- *)
 
+let rec value_complexity value =
+  match value.Node.value with
+  | Value.Array values ->
+      1 + List.fold_left (fun total value -> total + value_complexity value) 0 values
+  | Value.Object entries ->
+      1
+      + List.fold_left
+          (fun total entry -> total + value_complexity entry.Value.value)
+          0
+          entries
+  | _ -> 1
+
+let rec condition_complexity condition =
+  match condition.Node.value with
+  | Statement.Boolean _ | Statement.Reference _ -> 1
+  | Statement.Not nested -> 1 + condition_complexity nested
+  | Statement.Logical {left; right; _} ->
+      1 + condition_complexity left + condition_complexity right
+  | Statement.Compare {value; _} -> 1 + value_complexity value
+
+let rec statement_complexity statement =
+  match statement.Node.value with
+  | Statement.Assignment assignment -> 1 + value_complexity assignment.Statement.value
+  | Statement.Define definition -> 1 + value_complexity definition.Statement.value
+  | Statement.Include _ -> 1
+  | Statement.Section section ->
+      1 + List.fold_left (fun total item -> total + statement_complexity item) 0 section.Statement.body
+  | Statement.Conditional conditional ->
+      let else_complexity =
+        match conditional.Statement.else_branch with
+        | None -> 0
+        | Some statements ->
+            List.fold_left (fun total item -> total + statement_complexity item) 0 statements
+      in
+      1
+      + condition_complexity conditional.Statement.condition
+      + List.fold_left (fun total item -> total + statement_complexity item) 0 conditional.Statement.then_branch
+      + else_complexity
+
+let rec value_depth depth value =
+  match value.Node.value with
+  | Value.Array values ->
+      List.fold_left (fun maximum value -> max maximum (value_depth (depth + 1) value)) depth values
+  | Value.Object entries ->
+      List.fold_left
+        (fun maximum entry -> max maximum (value_depth (depth + 1) entry.Value.value))
+        depth
+        entries
+  | _ -> depth
+
+let rec condition_depth depth condition =
+  match condition.Node.value with
+  | Statement.Boolean _ | Statement.Reference _ -> depth
+  | Statement.Not nested -> condition_depth (depth + 1) nested
+  | Statement.Logical {left; right; _} ->
+      max
+        (condition_depth (depth + 1) left)
+        (condition_depth (depth + 1) right)
+  | Statement.Compare {value; _} -> value_depth (depth + 1) value
+
+let rec statement_depth depth statement =
+  match statement.Node.value with
+  | Statement.Assignment assignment -> value_depth depth assignment.Statement.value
+  | Statement.Define definition -> value_depth depth definition.Statement.value
+  | Statement.Include _ -> depth
+  | Statement.Section section ->
+      List.fold_left
+        (fun maximum item -> max maximum (statement_depth (depth + 1) item))
+        depth
+        section.Statement.body
+  | Statement.Conditional conditional ->
+      let branch_depth statements =
+        List.fold_left
+          (fun maximum item -> max maximum (statement_depth (depth + 1) item))
+          depth
+          statements
+      in
+      let else_depth =
+        match conditional.Statement.else_branch with
+        | None -> depth
+        | Some statements -> branch_depth statements
+      in
+      max
+        (condition_depth (depth + 1) conditional.Statement.condition)
+        (max (branch_depth conditional.Statement.then_branch) else_depth)
+
+let validate_limits options statements =
+  if options.maximum_depth < 1 || options.maximum_operations < 1 then
+    invalid_arg "Evaluator options require positive limits";
+  let complexity =
+    List.fold_left (fun total item -> total + statement_complexity item) 0 statements
+  in
+  if complexity > options.maximum_operations then
+    raise
+      (Evaluation_error
+         (Limit_exceeded
+            {limit = "operation count"; maximum = options.maximum_operations}));
+  let depth =
+    List.fold_left (fun maximum item -> max maximum (statement_depth 1 item)) 0 statements
+  in
+  if depth > options.maximum_depth then
+    raise
+      (Evaluation_error
+         (Limit_exceeded {limit = "nesting depth"; maximum = options.maximum_depth}))
+
 let evaluate_document
     ?filename
+    ?(options = default_options)
     statements =
+  validate_limits options statements;
   let state =
     empty_state
       ?filename
+      ~options
       ()
   in
 
@@ -586,18 +838,22 @@ let evaluate_document
 
 let evaluate
     ?filename
+    ?options
     statements =
   (evaluate_document
      ?filename
+     ?options
      statements).config
 
 let evaluate_with_diagnostics
     ?filename
+    ?options
     statements =
   try
     let state =
       evaluate_document
         ?filename
+        ?options
         statements
     in
 
@@ -650,6 +906,24 @@ let diagnostic_of_error ?span = function
         ?span
         error
 
+  | Invalid_value message ->
+      Error.invalid_value ?span message
+      |> Error.to_diagnostic
+
+  | Division_by_zero ->
+      Error.division_by_zero ?span ()
+      |> Error.to_diagnostic
+
+  | Type_mismatch {expected; found} ->
+      Error.type_mismatch ?span ~expected ~found ()
+      |> Error.to_diagnostic
+
+  | Limit_exceeded {limit; maximum} ->
+      Error.evaluation_failed
+        ?span
+        (Printf.sprintf "%s limit (%d) exceeded" limit maximum)
+      |> Error.to_diagnostic
+
   | Unsupported_statement message ->
       Error.evaluation_failed
         ?span
@@ -686,6 +960,18 @@ let string_of_error = function
   | Invalid_condition error ->
       Condition.string_of_error
         error
+
+  | Invalid_value message ->
+      "invalid value: " ^ message
+
+  | Division_by_zero ->
+      "division by zero"
+
+  | Type_mismatch {expected; found} ->
+      Printf.sprintf "type mismatch: expected %s, found %s" expected found
+
+  | Limit_exceeded {limit; maximum} ->
+      Printf.sprintf "%s limit (%d) exceeded" limit maximum
 
   | Unsupported_statement message ->
       message

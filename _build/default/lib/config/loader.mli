@@ -43,6 +43,7 @@ exception Load_error of error
 type result = {
   config : Config.t;
   files : string list;
+  diagnostics : Diagnostic.t list;
 }
 
 (* ---------------------------------------------------------- *)
@@ -146,6 +147,9 @@ val load_statement :
 
 val load_document :
   ?filename:string ->
+  ?security_root:string ->
+  ?allow_symlinks:bool ->
+  ?maximum_include_depth:int ->
   Statement.t Node.t list ->
   result
 
@@ -155,6 +159,9 @@ val load_document :
 
 val load_source :
   ?filename:string ->
+  ?security_root:string ->
+  ?allow_symlinks:bool ->
+  ?maximum_include_depth:int ->
   string ->
   result
 
@@ -163,6 +170,9 @@ val load_source :
 (* ---------------------------------------------------------- *)
 
 val load_file :
+  ?security_root:string ->
+  ?allow_symlinks:bool ->
+  ?maximum_include_depth:int ->
   string ->
   result
 
@@ -171,11 +181,17 @@ val load_file :
 (* ---------------------------------------------------------- *)
 
 val config_of_file :
+  ?security_root:string ->
+  ?allow_symlinks:bool ->
+  ?maximum_include_depth:int ->
   string ->
   Config.t
 
 val config_of_source :
   ?filename:string ->
+  ?security_root:string ->
+  ?allow_symlinks:bool ->
+  ?maximum_include_depth:int ->
   string ->
   Config.t
 
@@ -186,6 +202,10 @@ val files :
 val config :
   result ->
   Config.t
+
+val diagnostics :
+  result ->
+  Diagnostic.t list
 
 (* ---------------------------------------------------------- *)
 (* Canonical diagnostics                                      *)

@@ -45,6 +45,9 @@ VERBOSE=0
 JOBS=""
 PKG_IDENTIFIER="org.vitte-foundation.vfconf"
 INSTALL_PREFIX="/usr/local"
+PKG_SIGNING_IDENTITY=""
+NOTARIZE=0
+NOTARY_PROFILE=""
 
 DUNE_ARGS=()
 
@@ -116,6 +119,9 @@ Packaging:
   --no-checksum         Disable SHA-256 generation.
   --identifier ID       Override macOS package identifier.
   --prefix PATH         Installation prefix (default: /usr/local).
+  --sign-identity ID    Sign the installer with productsign.
+  --notarize             Submit and staple the installer with notarytool.
+  --notary-profile NAME  Keychain profile used by notarytool.
 
 General:
   -v, --verbose         Verbose Dune output.
@@ -210,6 +216,22 @@ parse_arguments() {
                     die "--prefix requires an argument"
 
                 INSTALL_PREFIX="$2"
+                shift
+                ;;
+
+            --sign-identity)
+                (($# >= 2)) || die "--sign-identity requires an argument"
+                PKG_SIGNING_IDENTITY="$2"
+                shift
+                ;;
+
+            --notarize)
+                NOTARIZE=1
+                ;;
+
+            --notary-profile)
+                (($# >= 2)) || die "--notary-profile requires an argument"
+                NOTARY_PROFILE="$2"
                 shift
                 ;;
 
@@ -770,6 +792,9 @@ create_portable_distribution() {
 
     create_manifest "$destination"
 
+    # AppleDouble metadata must never enter release archives.
+    find "$destination" -name '._*' -type f -delete
+
     (
         cd -- "$DIST_DIR"
 
@@ -879,6 +904,22 @@ verify_pkg_payload() {
     log "Package payload verified"
 }
 
+sign_and_notarize_pkg() {
+    local output="$1"
+    if [[ -n "$PKG_SIGNING_IDENTITY" ]]; then
+        require_command productsign
+        local signed="${output}.signed"
+        productsign --sign "$PKG_SIGNING_IDENTITY" "$output" "$signed"
+        mv -f -- "$signed" "$output"
+    fi
+    (( NOTARIZE )) || return 0
+    [[ -n "$NOTARY_PROFILE" ]] || die "--notarize requires --notary-profile"
+    require_command xcrun
+    xcrun notarytool submit "$output" --keychain-profile "$NOTARY_PROFILE" --wait
+    xcrun stapler staple "$output"
+    xcrun stapler validate "$output"
+}
+
 create_pkg() {
     local version="$1"
     local architecture="$2"
@@ -913,6 +954,8 @@ create_pkg() {
     copy_pkg_documentation "$root"
     create_pkg_scripts "$scripts"
 
+    find "$root" "$scripts" -name '._*' -type f -delete
+
     verify_pkg_payload "$root"
 
     pkgbuild \
@@ -922,6 +965,8 @@ create_pkg() {
         --version "$version" \
         --install-location "/" \
         "$output"
+
+    sign_and_notarize_pkg "$output"
 
     [[ -s "$output" ]] ||
         die "macOS package creation failed"

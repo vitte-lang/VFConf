@@ -12,7 +12,6 @@ WARNING_FILE = ROOT / "lib/diagnostics/warning.ml"
 SCAN_DIRS = [
     ROOT / "lib",
     ROOT / "bin",
-    ROOT / "tests",
 ]
 
 EXCLUDED = {

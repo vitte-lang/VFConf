@@ -174,6 +174,12 @@ val format :
   Statement.t Node.t list ->
   string
 
+val diagnostics_of_source :
+  ?filename:string ->
+  string ->
+  Statement.t Node.t list ->
+  Diagnostic.t list
+
 (* ---------------------------------------------------------- *)
 (* Pretty printing                                            *)
 (* ---------------------------------------------------------- *)

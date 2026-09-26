@@ -1,0 +1,53 @@
+(* VFConf literal grammar. *)
+
+literal         = string | number | boolean | null
+                | color | duration | size ;
+
+string          = '"', { string_character | escape }, '"' ;
+string_character
+                = ? any Unicode character except '"', '\\', CR and LF ? ;
+escape          = "\\n" | "\\r" | "\\t" | "\\b" | "\\f"
+                | "\\\\" | "\\/" | '\\"' | unicode_escape ;
+unicode_escape  = "\\u", hex_digit, hex_digit, hex_digit, hex_digit ;
+
+number          = integer | float ;
+integer         = decimal_integer | hexadecimal_integer
+                | octal_integer | binary_integer ;
+decimal_integer = [ sign ], digits ;
+hexadecimal_integer
+                = ( "0x" | "0X" ), hex_digits ;
+octal_integer   = ( "0o" | "0O" ), octal_digits ;
+binary_integer  = ( "0b" | "0B" ), binary_digits ;
+
+float           = [ sign ],
+                  ( digits, ".", [ digits ], [ exponent ]
+                  | ".", digits, [ exponent ]
+                  | digits, exponent ) ;
+exponent        = ( "e" | "E" ), [ sign ], digits ;
+sign            = "+" | "-" ;
+
+digits          = digit, { digit | "_" } ;
+hex_digits      = hex_digit, { hex_digit | "_" } ;
+octal_digits    = "0".."7", { "0".."7" | "_" } ;
+binary_digits   = ( "0" | "1" ), { "0" | "1" | "_" } ;
+digit           = "0".."9" ;
+hex_digit       = digit | "A".."F" | "a".."f" ;
+
+boolean         = "true" | "false" | "on" | "off" ;
+null            = "null" | "none" ;
+
+hex_color       = "#", ( hex_color_3 | hex_color_4
+                         | hex_color_6 | hex_color_8 ),
+                  ? followed by a token boundary ? ;
+hex_color_3     = hex_digit, hex_digit, hex_digit ;
+hex_color_4     = hex_color_3, hex_digit ;
+hex_color_6     = hex_color_3, hex_color_3 ;
+hex_color_8     = hex_color_4, hex_color_4 ;
+
+duration        = number, ( "ns" | "us" | "ms" | "s" | "min" | "h" ) ;
+size            = number, ( "B" | "KB" | "MB" | "GB"
+                           | "KiB" | "MiB" | "GiB" ) ;
+
+(* Unit spelling and case are significant. The canonical booleans are
+ * true and false; on/off remain accepted for compatibility and produce
+ * a deprecation/style diagnostic. *)

@@ -1,1 +1,1 @@
-lib/formatter/formatter.ml: Buffer Format Int64 List Node Printf Statement String Value
+lib/formatter/formatter.ml: Buffer Format Int64 List Node Option Printf Statement String Value Warning

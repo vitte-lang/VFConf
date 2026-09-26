@@ -27,6 +27,8 @@ type error =
   | Invalid_extension of path
   | File_not_found of path
   | Is_directory of path
+  | Symlink_not_allowed of path
+  | Outside_root of { root : path; path : path }
   | Include_cycle of path list
   | Maximum_depth_exceeded of {
       maximum : int;
@@ -45,6 +47,8 @@ exception Include_error of error
 
 type context = {
   root : path;
+  security_root : path;
+  allow_symlinks : bool;
   stack : path list;
   maximum_depth : int;
 }
@@ -159,14 +163,35 @@ let absolute_path path =
          path)
 
 let canonicalize path =
-  (*
-   * Unix.realpath is intentionally avoided here so the module
-   * remains usable on platforms where only the standard OCaml
-   * Filename/Sys APIs are available.
-   *
-   * Existing files are therefore canonicalized lexically.
-   *)
-  absolute_path path
+  let path = absolute_path path in
+  try Unix.realpath path with Unix.Unix_error _ -> path
+
+let path_is_within ~root path =
+  let root = canonicalize root in
+  let path = canonicalize path in
+  String.equal root path
+  ||
+  let prefix =
+    if String.ends_with ~suffix:Filename.dir_sep root then root
+    else root ^ Filename.dir_sep
+  in
+  String.starts_with ~prefix path
+
+let path_contains_symlink path =
+  let absolute = absolute_path path in
+  let components = String.split_on_char '/' absolute in
+  let rec walk current = function
+    | [] -> false
+    | "" :: rest -> walk Filename.dir_sep rest
+    | component :: rest ->
+        let candidate = Filename.concat current component in
+        let symlink =
+          try (Unix.lstat candidate).Unix.st_kind = Unix.S_LNK
+          with Unix.Unix_error _ -> false
+        in
+        symlink || walk candidate rest
+  in
+  walk "" components
 
 (* ---------------------------------------------------------- *)
 (* Filesystem validation                                      *)
@@ -201,6 +226,8 @@ let validate_file path =
 
 let create_context
     ?(maximum_depth = default_maximum_depth)
+    ?security_root
+    ?(allow_symlinks = false)
     root =
   if maximum_depth < 1 then
     invalid_arg
@@ -210,17 +237,29 @@ let create_context
     canonicalize root
   in
 
+  let security_root =
+    match security_root with
+    | Some path -> canonicalize path
+    | None -> root
+  in
+
   {
     root;
+    security_root;
+    allow_symlinks;
     stack = [];
     maximum_depth;
   }
 
 let empty_context
     ?(maximum_depth = default_maximum_depth)
+    ?security_root
+    ?(allow_symlinks = false)
     () =
   create_context
     ~maximum_depth
+    ?security_root
+    ~allow_symlinks
     (Sys.getcwd ())
 
 (* ---------------------------------------------------------- *)
@@ -239,6 +278,12 @@ let current context =
 
 let root context =
   context.root
+
+let security_root context =
+  context.security_root
+
+let allows_symlinks context =
+  context.allow_symlinks
 
 let stack context =
   List.rev context.stack
@@ -281,7 +326,15 @@ let resolve context include_path =
         include_path
   in
 
-  canonicalize resolved
+  if (not context.allow_symlinks) && path_contains_symlink resolved then
+    raise (Include_error (Symlink_not_allowed resolved));
+
+  let resolved = canonicalize resolved in
+
+  if not (path_is_within ~root:context.security_root resolved) then
+    raise (Include_error (Outside_root {root = context.security_root; path = resolved}));
+
+  resolved
 
 let resolve_from_file
     source_file
@@ -349,9 +402,13 @@ let check_cycle path context =
 (* ---------------------------------------------------------- *)
 
 let push path context =
-  let path =
-    canonicalize path
-  in
+  let path = canonicalize path in
+
+  if (not context.allow_symlinks) && path_contains_symlink path then
+    raise (Include_error (Symlink_not_allowed path));
+
+  if not (path_is_within ~root:context.security_root path) then
+    raise (Include_error (Outside_root {root = context.security_root; path}));
 
   validate_file path;
   check_cycle path context;
@@ -486,6 +543,18 @@ let diagnostic_of_error = function
         (Error.Invalid_include path)
       |> Error.to_diagnostic
 
+  | Symlink_not_allowed path ->
+      Error.make
+        (Error.Invalid_include
+           (Printf.sprintf "symbolic link is not allowed: %s" path))
+      |> Error.to_diagnostic
+
+  | Outside_root { root; path } ->
+      Error.make
+        (Error.Invalid_include
+           (Printf.sprintf "path '%s' escapes security root '%s'" path root))
+      |> Error.to_diagnostic
+
   | Include_cycle paths ->
       Error.make
         (Error.Include_cycle paths)
@@ -541,6 +610,12 @@ let string_of_error = function
         "include path refers to a directory: %s"
         path
 
+  | Symlink_not_allowed path ->
+      Printf.sprintf "symbolic link is not allowed in include path: %s" path
+
+  | Outside_root { root; path } ->
+      Printf.sprintf "included path '%s' is outside security root '%s'" path root
+
   | Include_cycle paths ->
       Printf.sprintf
         "recursive include detected: %s"
@@ -572,8 +647,12 @@ let pp_context formatter context =
     formatter
     "@[<v>Include context:@,\
      root: %s@,\
+     security root: %s@,\
+     symbolic links: %s@,\
      depth: %d/%d"
     context.root
+    context.security_root
+    (if context.allow_symlinks then "allowed" else "rejected")
     (depth context)
     context.maximum_depth;
 

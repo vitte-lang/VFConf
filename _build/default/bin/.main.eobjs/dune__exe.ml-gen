@@ -6,6 +6,9 @@ module Check = Dune__exe__Check
 (** @canonical Dune__exe.Check_all *)
 module Check_all = Dune__exe__Check_all
 
+(** @canonical Dune__exe.Cli_support *)
+module Cli_support = Dune__exe__Cli_support
+
 (** @canonical Dune__exe.Command_catalog *)
 module Command_catalog = Dune__exe__Command_catalog
 

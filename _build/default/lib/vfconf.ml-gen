@@ -3,6 +3,9 @@
 (** @canonical Vfconf.Analyzer *)
 module Analyzer = Vfconf__Analyzer
 
+(** @canonical Vfconf.Api *)
+module Api = Vfconf__Api
+
 (** @canonical Vfconf.Ast *)
 module Ast = Vfconf__Ast
 
@@ -92,6 +95,9 @@ module Schema = Vfconf__Schema
 
 (** @canonical Vfconf.Source *)
 module Source = Vfconf__Source
+
+(** @canonical Vfconf.Source_formatter *)
+module Source_formatter = Vfconf__Source_formatter
 
 (** @canonical Vfconf.Span *)
 module Span = Vfconf__Span

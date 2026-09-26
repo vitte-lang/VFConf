@@ -44,18 +44,31 @@ value           = string
 
 (* ---------- Primitive values ---------- *)
 
-string          = quoted_string | raw_string ;
+string          = quoted_string ;
 
 quoted_string   = '"', { string_character | escape }, '"' ;
 
-raw_string      = "'", { raw_character }, "'" ;
+integer         = decimal_integer
+                | hexadecimal_integer
+                | octal_integer
+                | binary_integer ;
 
-integer         = [ sign ], digit, { digit | "_" } ;
+decimal_integer = [ sign ], digits ;
+
+hexadecimal_integer
+                = ( "0x" | "0X" ), hex_digits ;
+
+octal_integer   = ( "0o" | "0O" ), octal_digits ;
+
+binary_integer  = ( "0b" | "0B" ), binary_digits ;
 
 float           = [ sign ],
-                  digit, { digit | "_" },
-                  ".",
-                  digit, { digit | "_" } ;
+                  ( digits, ".", [ digits ], [ exponent ]
+                  | ".", digits, [ exponent ]
+                  | digits, exponent
+                  ) ;
+
+exponent        = ( "e" | "E" ), [ sign ], digits ;
 
 sign            = "+" | "-" ;
 
@@ -141,9 +154,14 @@ comparison_op   = "=="
 
 color           = hex_color | rgb_color | rgba_color ;
 
-hex_color       = "#", hex_digit, hex_digit, hex_digit,
-                  [ hex_digit, hex_digit, hex_digit,
-                    [ hex_digit, hex_digit ] ] ;
+hex_color       = "#", ( hex_color_3 | hex_color_4
+                         | hex_color_6 | hex_color_8 ),
+                  ? followed by a token boundary ? ;
+
+hex_color_3     = hex_digit, hex_digit, hex_digit ;
+hex_color_4     = hex_color_3, hex_digit ;
+hex_color_6     = hex_color_3, hex_color_3 ;
+hex_color_8     = hex_color_4, hex_color_4 ;
 
 rgb_color       = "rgb",
                   "(",
@@ -203,27 +221,40 @@ letter          = "A".."Z" | "a".."z" ;
 
 digit           = "0".."9" ;
 
+digits          = digit, { digit | "_" } ;
+
+hex_digits      = hex_digit, { hex_digit | "_" } ;
+
+octal_digits    = "0".."7", { "0".."7" | "_" } ;
+
+binary_digits   = ( "0" | "1" ), { "0" | "1" | "_" } ;
+
 hex_digit       = digit
                 | "A".."F"
                 | "a".."f" ;
 
-escape          = "\n"
-                | "\r"
-                | "\t"
-                | "\\"
-                | '\"'
-                | "\'" ;
+escape          = "\\n"
+                | "\\r"
+                | "\\t"
+                | "\\b"
+                | "\\f"
+                | "\\\\"
+                | "\\/"
+                | '\\"'
+                | unicode_escape ;
+
+unicode_escape  = "\\u", hex_digit, hex_digit, hex_digit, hex_digit ;
 
 string_character
                 = ? any Unicode character except '"', '\', CR and LF ? ;
-
-raw_character   = ? any Unicode character except "'" ? ;
 
 (* ---------- Comments ---------- *)
 
 comment         = line_comment | block_comment ;
 
-line_comment    = "#", { ? character except newline ? }
+line_comment    = "#", ? followed by newline or end of input ?
+                | "#", horizontal_whitespace,
+                       { ? character except newline ? }
                 | "//", { ? character except newline ? } ;
 
 block_comment   = "/*",
@@ -237,6 +268,9 @@ terminator      = ";" | newline ;
 newline         = "\n" | "\r\n" ;
 
 whitespace      = " " | "\t" | newline ;
+
+horizontal_whitespace
+                = " " | "\t" ;
 
 (* Comments and insignificant whitespace may occur between
  * lexical tokens unless they occur inside string literals. *)

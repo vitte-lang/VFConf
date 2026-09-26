@@ -24,6 +24,7 @@ type state = {
   symbols : symbol String_map.t;
   definitions : symbol String_map.t;
   schema_fields : String_set.t;
+  referenced_definitions : String_set.t;
   diagnostics : Diagnostic.t list;
 }
 
@@ -38,6 +39,7 @@ let empty_state =
     symbols = String_map.empty;
     definitions = String_map.empty;
     schema_fields = String_set.empty;
+    referenced_definitions = String_set.empty;
     diagnostics = [];
   }
 
@@ -77,6 +79,31 @@ let add_warning warning (state : state) =
   Warning.to_diagnostic warning
   |> fun diagnostic ->
        add_diagnostic diagnostic state
+
+let warning ?span kind state =
+  add_warning (Warning.make ?span kind) state
+
+let mark_definition_used name (state : state) =
+  {
+    state with
+    referenced_definitions =
+      String_set.add name state.referenced_definitions;
+  }
+
+let inspect_container path value state =
+  match value.Node.value with
+  | Value.Array [] ->
+      warning
+        ~span:value.Node.span
+        (Warning.Empty_array (path_key path))
+        state
+  | Value.Object [] ->
+      warning
+        ~span:value.Node.span
+        (Warning.Empty_object (path_key path))
+        state
+  | _ ->
+      state
 
 let duplicate_key path span state =
   add_error
@@ -295,6 +322,15 @@ let rec analyze_value
     value =
   match value.Node.value with
   | Value.Reference path ->
+      let state =
+        match path with
+        | [name]
+          when Option.is_some
+                 (find_definition_symbol state name) ->
+            mark_definition_used name state
+        | _ ->
+            state
+      in
       if
         reference_exists_in_scope
           state
@@ -354,7 +390,7 @@ let analyze_condition
             condition.Node.span
             state
 
-    | Statement.Boolean _ ->
+  | Statement.Boolean _ ->
         state
 
     | Statement.Not condition ->
@@ -437,9 +473,9 @@ let rec declare_statement
                 state
             in
 
-            add_schema_field
-              path
-              state
+            state
+            |> add_schema_field path
+            |> inspect_container path assignment.Statement.value
 
         | Statement.Add_assign
         | Statement.Sub_assign ->
@@ -463,12 +499,36 @@ let rec declare_statement
           section.Statement.name
       in
 
-      List.fold_left
-        (declare_statement section_prefix)
-        state
-        section.Statement.body
+      if section.Statement.body = [] then
+        warning
+          ~span:statement.Node.span
+          (Warning.Empty_section (path_key section_prefix))
+          state
+      else
+        List.fold_left
+          (declare_statement section_prefix)
+          state
+          section.Statement.body
 
   | Statement.Conditional conditional ->
+      let state =
+        match Condition.constant_value conditional.Statement.condition with
+        | Some true ->
+            warning
+              ~span:conditional.Statement.condition.Node.span
+              Warning.Condition_always_true
+              state
+        | Some false ->
+            state
+            |> warning
+                 ~span:conditional.Statement.condition.Node.span
+                 Warning.Condition_always_false
+            |> warning
+                 ~span:statement.Node.span
+                 Warning.Unreachable_configuration
+        | None ->
+            state
+      in
       let state =
         List.fold_left
           (declare_statement prefix)
@@ -662,6 +722,29 @@ let analyze document =
       document
   in
 
+  let state =
+    String_map.fold
+      (fun name symbol state ->
+        let state =
+          if String_set.mem name state.referenced_definitions then
+            state
+          else
+            warning
+              ~span:symbol.span
+              (Warning.Unused_definition name)
+              state
+        in
+        if String_map.mem name state.symbols then
+          warning
+            ~span:symbol.span
+            (Warning.Shadowed_definition name)
+            state
+        else
+          state)
+      state.definitions
+      state
+  in
+
   let symbols =
     String_map.bindings state.symbols
     |> List.map snd
@@ -697,6 +780,59 @@ let is_valid result =
 
 let diagnostics result =
   result.diagnostics
+
+let path_has_prefix prefix path =
+  let rec loop prefix path =
+    match prefix, path with
+    | [], _ -> true
+    | _, [] -> false
+    | expected :: prefix, actual :: path ->
+        String.equal expected actual && loop prefix path
+  in
+  loop prefix path
+
+let unused_diagnostics ~roots result =
+  let configurations =
+    List.filter
+      (fun symbol -> symbol.kind = Configuration)
+      result.symbols
+  in
+  let is_used symbol =
+    List.exists
+      (fun root ->
+        path_has_prefix root symbol.path
+        || path_has_prefix symbol.path root)
+      roots
+  in
+  let value_warnings =
+    configurations
+    |> List.filter (fun symbol -> not (is_used symbol))
+    |> List.map (fun symbol ->
+         Warning.unused_value ~span:symbol.span symbol.name
+         |> Warning.to_diagnostic)
+  in
+  let sections =
+    configurations
+    |> List.filter_map (fun symbol ->
+         match symbol.path with
+         | section :: _ -> Some section
+         | [] -> None)
+    |> List.sort_uniq String.compare
+  in
+  let section_warnings =
+    sections
+    |> List.filter (fun section ->
+         not
+           (List.exists
+              (fun symbol ->
+                is_used symbol
+                && path_has_prefix [section] symbol.path)
+              configurations))
+    |> List.map (fun section ->
+         Warning.unused_section section
+         |> Warning.to_diagnostic)
+  in
+  section_warnings @ value_warnings
 
 let symbols result =
   result.symbols

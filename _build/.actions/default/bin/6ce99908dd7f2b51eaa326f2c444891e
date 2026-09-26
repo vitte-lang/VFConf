@@ -1,1 +1,1 @@
-bin/fmt.ml: Array Filename Format Fun List Printf String Sys Unix Vfconf
+bin/fmt.ml: Array Cli_support Exit_code Filename Fun List Printf String Sys Unix Vfconf

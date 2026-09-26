@@ -7,6 +7,6 @@ architecture=arm64
 profile=release
 ocaml=5.5.1
 dune=3.24.2
-git_commit=90ab4ea04484cff5412186d72af3e81f53082704
+git_commit=8fa219a417f98e4c6bc7206709796311a269b272
 git_dirty=true
 executables=20

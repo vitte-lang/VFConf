@@ -200,17 +200,23 @@ check = ROOT / "bin/check.ml"
 if check.exists():
     check_source = read(check)
 
-    required_calls = [
-        "Vfconf.Parse",
-        "Vfconf.Validator",
-        "Vfconf.Diagnostic",
-    ]
-
-    for call in required_calls:
-        if call not in check_source:
-            errors.append(
-                f"vfconf-check is not connected to {call}"
-            )
+    # vfconf-check may use the stable public façade.  In that case Api.check
+    # deliberately wires Parse, Validator and Diagnostic internally; require
+    # either the direct legacy references or the façade call plus its module.
+    integrations = {
+        "Vfconf.Parse": ("Vfconf.Parse", "Vfconf.Api.check"),
+        "Vfconf.Validator": ("Vfconf.Validator", "Vfconf.Api.check"),
+        "Vfconf.Diagnostic": ("Vfconf.Diagnostic", "Vfconf.Api.check"),
+    }
+    for call, alternatives in integrations.items():
+        if not any(token in check_source for token in alternatives):
+            errors.append(f"vfconf-check is not connected to {call}")
+    api = ROOT / "lib/api.ml"
+    if "Vfconf.Api.check" in check_source and api.exists():
+        api_source = read(api)
+        for module in ("Parse", "Validator", "Diagnostic"):
+            if module not in api_source:
+                errors.append(f"Vfconf.Api.check is not connected to Vfconf.{module}")
 else:
     errors.append("bin/check.ml missing")
 

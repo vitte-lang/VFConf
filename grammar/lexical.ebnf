@@ -1,0 +1,45 @@
+(* VFConf lexical grammar.
+ * When this file and vfconf.ebnf disagree, vfconf.ebnf is authoritative. *)
+
+token           = keyword
+                | identifier
+                | literal
+                | operator
+                | punctuation ;
+
+keyword         = "include" | "define" | "when" | "else"
+                | "true" | "false" | "on" | "off"
+                | "null" | "none" ;
+
+identifier      = identifier_start, { identifier_continue } ;
+identifier_start
+                = letter | "_" ;
+identifier_continue
+                = letter | digit | "_" | "-" ;
+
+operator        = "=" | ":=" | "+=" | "-="
+                | "==" | "!=" | "<" | "<=" | ">" | ">="
+                | "!" | "&&" | "||" ;
+
+punctuation     = "[" | "]" | "{" | "}" | "(" | ")"
+                | "," | ":" | ";" | "." | "$" ;
+
+comment         = hash_comment | slash_comment | block_comment ;
+
+(* A hash comment requires whitespace after '#', or a bare '#'.
+ * Compact forms beginning with '#' are reserved for colors. *)
+hash_comment    = "#", ? followed by newline or end of input ?
+                | "#", horizontal_whitespace,
+                       { ? character except newline ? } ;
+slash_comment   = "//", { ? character except newline ? } ;
+block_comment   = "/*", { ? character sequence except "*/" ? }, "*/" ;
+
+horizontal_whitespace
+                = " " | "\t" ;
+newline         = "\n" | "\r\n" | "\r" ;
+
+letter          = "A".."Z" | "a".."z" ;
+digit           = "0".."9" ;
+
+(* Maximal munch applies. When two rules match the same number of
+ * characters, the rule appearing first in the lexer wins. *)

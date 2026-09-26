@@ -50,6 +50,7 @@ exception Load_error of error
 type result = {
   config : Config.t;
   files : string list;
+  diagnostics : Diagnostic.t list;
 }
 
 (* ---------------------------------------------------------- *)
@@ -685,30 +686,77 @@ and load_statement
                  (Include_error error))
       in
 
-      let document =
-        parse_file resolved
-      in
+      if List.mem resolved files then
+        (config, resolved :: files)
+      else
 
-      let files =
-        if List.mem resolved files then
+        let document =
+          parse_file resolved
+        in
+
+        let files = resolved :: files in
+
+        load_statements
+          child_context
+          prefix
+          config
           files
-        else
-          resolved :: files
-      in
-
-      load_statements
-        child_context
-        prefix
-        config
-        files
-        document
+          document
 
 (* ---------------------------------------------------------- *)
 (* Document loading                                           *)
 (* ---------------------------------------------------------- *)
 
+let path_is_within ~root path =
+  let root = Include.canonicalize root in
+  let path = Include.canonicalize path in
+  String.equal root path
+  ||
+  let prefix =
+    if String.ends_with ~suffix:Filename.dir_sep root then root
+    else root ^ Filename.dir_sep
+  in
+  String.starts_with ~prefix path
+
+let result_with_diagnostics ?root config files =
+  let ordered = List.rev files in
+  let _, unique_rev, diagnostics_rev =
+    List.fold_left
+      (fun (seen, unique, diagnostics) path ->
+        let diagnostics =
+          if List.mem path seen then
+            Warning.include_repeated path
+            |> Warning.to_diagnostic
+            |> fun diagnostic -> diagnostic :: diagnostics
+          else
+            diagnostics
+        in
+        let diagnostics =
+          match root with
+          | Some root when not (path_is_within ~root path) ->
+              Warning.include_outside_root path
+              |> Warning.to_diagnostic
+              |> fun diagnostic -> diagnostic :: diagnostics
+          | _ -> diagnostics
+        in
+        if List.mem path seen then
+          (seen, unique, diagnostics)
+        else
+          (path :: seen, path :: unique, diagnostics))
+      ([], [], [])
+      ordered
+  in
+  {
+    config;
+    files = List.rev unique_rev;
+    diagnostics = List.rev diagnostics_rev;
+  }
+
 let load_document
     ?filename
+    ?security_root
+    ?(allow_symlinks = false)
+    ?(maximum_include_depth = Include.default_maximum_depth)
     statements =
   let config =
     Config.empty ?filename ()
@@ -723,6 +771,9 @@ let load_document
 
         let context =
           Include.create_context
+            ~maximum_depth:maximum_include_depth
+            ?security_root
+            ~allow_symlinks
             (Filename.dirname filename)
         in
 
@@ -731,7 +782,11 @@ let load_document
           context
 
     | None ->
-        Include.empty_context ()
+        Include.empty_context
+          ~maximum_depth:maximum_include_depth
+          ?security_root
+          ~allow_symlinks
+          ()
   in
 
   let config, files =
@@ -743,10 +798,8 @@ let load_document
       statements
   in
 
-  {
-    config;
-    files = List.rev files;
-  }
+  let root = Option.map Filename.dirname filename in
+  result_with_diagnostics ?root config files
 
 (* ---------------------------------------------------------- *)
 (* Source loading                                             *)
@@ -754,6 +807,9 @@ let load_document
 
 let load_source
     ?(filename = "<memory>")
+    ?security_root
+    ?(allow_symlinks = false)
+    ?(maximum_include_depth = Include.default_maximum_depth)
     source =
   let document =
     parse_source
@@ -761,18 +817,40 @@ let load_source
       source
   in
 
-  if String.equal filename "<memory>" then
-    load_document document
-  else
-    load_document
-      ~filename
-      document
+  let result =
+    if String.equal filename "<memory>" then
+      load_document
+        ?security_root
+        ~allow_symlinks
+        ~maximum_include_depth
+        document
+    else
+      load_document
+        ~filename
+        ?security_root
+        ~allow_symlinks
+        ~maximum_include_depth
+        document
+  in
+  {
+    result with
+    diagnostics =
+      result.diagnostics
+      @ Formatter.diagnostics_of_source
+          ~filename
+          source
+          document;
+  }
 
 (* ---------------------------------------------------------- *)
 (* File loading                                               *)
 (* ---------------------------------------------------------- *)
 
-let load_file filename =
+let load_file
+    ?security_root
+    ?(allow_symlinks = false)
+    ?(maximum_include_depth = Include.default_maximum_depth)
+    filename =
   let filename =
     Include.canonicalize filename
   in
@@ -792,6 +870,9 @@ let load_file filename =
 
     let context =
       Include.create_context
+        ~maximum_depth:maximum_include_depth
+        ?security_root
+        ~allow_symlinks
         (Filename.dirname filename)
       |> Include.push filename
     in
@@ -811,9 +892,20 @@ let load_file filename =
         document
     in
 
+    let result =
+      result_with_diagnostics
+        ~root:(Filename.dirname filename)
+        config
+        files
+    in
     {
-      config;
-      files = List.rev files;
+      result with
+      diagnostics =
+        result.diagnostics
+        @ Formatter.diagnostics_of_source
+            ~filename
+            source
+            document;
     }
 
   with
@@ -836,13 +928,29 @@ let load_file filename =
 (* Convenience API                                            *)
 (* ---------------------------------------------------------- *)
 
-let config_of_file filename =
-  (load_file filename).config
+let config_of_file
+    ?security_root
+    ?allow_symlinks
+    ?maximum_include_depth
+    filename =
+  (load_file
+     ?security_root
+     ?allow_symlinks
+     ?maximum_include_depth
+     filename).config
 
 let config_of_source
     ?filename
+    ?security_root
+    ?allow_symlinks
+    ?maximum_include_depth
     source =
-  (load_source ?filename source).config
+  (load_source
+     ?filename
+     ?security_root
+     ?allow_symlinks
+     ?maximum_include_depth
+     source).config
 
 let files result =
   result.files
@@ -850,11 +958,18 @@ let files result =
 let config result =
   result.config
 
+let diagnostics result =
+  result.diagnostics
+
 (* ---------------------------------------------------------- *)
 (* Canonical diagnostics                                      *)
 (* ---------------------------------------------------------- *)
 
 let diagnostic_of_include_error = function
+  | (Include.Symlink_not_allowed _ as error)
+  | (Include.Outside_root _ as error) ->
+      Include.diagnostic_of_error error
+
   | Include.File_not_found path ->
       Error.make
         (Error.Include_not_found path)

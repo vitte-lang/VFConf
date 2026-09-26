@@ -649,6 +649,68 @@ let apply_defaults schema config =
     config
     (sections schema)
 
+let warning_diagnostics schema original_config =
+  let field_warnings =
+    sections schema
+    |> List.concat_map (fun section ->
+         section_fields section
+         |> List.concat_map (fun field ->
+              let path = field_path section.path (Field.name field) in
+              let warnings =
+                if Field.is_deprecated field && Config.mem path original_config then
+                  [Warning.deprecated_key
+                     ?replacement:(Field.replacement field)
+                     (Config.string_of_path path)
+                   |> Warning.to_diagnostic]
+                else
+                  []
+              in
+              let warnings =
+                if
+                (not (Config.mem path original_config))
+                && Field.has_default field
+                then
+                  (Warning.schema_default_used
+                     (Config.string_of_path path)
+                   |> Warning.to_diagnostic) :: warnings
+                else
+                  warnings
+              in
+              match Config.find_value_opt path original_config with
+              | Some (Value.String "") ->
+                  (Warning.suspicious_value
+                     ~key:(Config.string_of_path path)
+                     "empty string"
+                   |> Warning.to_diagnostic) :: warnings
+              | _ -> warnings))
+  in
+  let unknown_warnings =
+    Config.entries original_config
+    |> List.filter_map (fun entry ->
+         match section_for_entry schema entry with
+         | None when schema.allow_unknown_sections ->
+             Some
+               (Warning.unknown_section
+                  ~span:entry.Config.span
+                  (Config.string_of_path entry.Config.path)
+                |> Warning.to_diagnostic)
+         | Some section when section.allow_unknown_fields ->
+             begin
+               match relative_field_name section entry with
+               | Some field when mem_field section field ->
+                   None
+               | _ ->
+                   Some
+                     (Warning.schema_additional_field
+                        ~span:entry.Config.span
+                        (Config.string_of_path entry.Config.path)
+                      |> Warning.to_diagnostic)
+             end
+         | _ ->
+             None)
+  in
+  field_warnings @ unknown_warnings
+
 (* ---------------------------------------------------------- *)
 (* Validation                                                 *)
 (* ---------------------------------------------------------- *)
@@ -686,15 +748,19 @@ let validate_without_defaults schema config =
   }
 
 let validate schema config =
+  let original_config = config in
   let config =
     apply_defaults
       schema
       config
   in
-
-  validate_without_defaults
-    schema
-    config
+  let result = validate_without_defaults schema config in
+  {
+    result with
+    diagnostics =
+      result.diagnostics
+      @ warning_diagnostics schema original_config;
+  }
 
 let is_valid schema config =
   let result =

@@ -41,5 +41,4 @@
   vfconf-explain
   vfconf-stats
   vfconf-check-all)
- (libraries
-  vfconf))
+ (libraries vfconf))

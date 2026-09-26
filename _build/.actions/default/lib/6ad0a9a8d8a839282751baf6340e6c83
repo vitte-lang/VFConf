@@ -1,1 +1,1 @@
-lib/formatter/formatter.mli: Format Node Statement Value
+lib/formatter/formatter.mli: Diagnostic Format Node Statement Value

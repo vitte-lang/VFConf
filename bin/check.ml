@@ -1,224 +1,64 @@
-(*
-
-* VFConf - Vitte Foundation Configuration Language
-* check.ml
-* Command-line configuration checker.
-* Usage:
-* vfconf-check <file.vf.conf>
-* Exit status:
-* 0  configuration accepted
-* 1  configuration error
-* 2  command-line / I/O error
-    *)
-
 let version = "0.1.0"
 
-type severity =
-| Error
+let help =
+  "VFConf configuration checker\n\n\
+   Usage: vfconf-check [OPTIONS] FILE.vf.conf\n\
+          vfconf-check [OPTIONS] -\n\n\
+   Options:\n\
+     --json                    emit JSON diagnostics\n\
+     --editor                  emit file:line:column diagnostics\n\
+     --quiet, -q               suppress success output\n\
+     --color=auto|always|never control ANSI colors\n\
+     -V, --version             display version\n\
+     -h, --help                display help\n\n\
+   Exit status: 0 success, 1 invalid input, 2 usage, 3 I/O.\n"
 
-type diagnostic = {
-severity : severity;
-file : string;
-line : int;
-column : int;
-message : string;
-}
+let run options input =
+  match Cli_support.read_input input with
+  | Error message ->
+      Printf.eprintf "vfconf-check: %s\n" message;
+      Exit_code.io_error
+  | Ok (filename, source) ->
+      if String.trim source = "" then begin
+        let diagnostic =
+          Vfconf.Error.invalid_value "configuration file is empty"
+          |> Vfconf.Error.to_diagnostic
+        in
+        Cli_support.emit_diagnostics options [diagnostic];
+        Exit_code.invalid_configuration
+      end else
+        match Vfconf.Api.check ~filename source with
+        | Error diagnostics ->
+            Cli_support.emit_diagnostics options diagnostics;
+            Exit_code.invalid_configuration
+        | Ok _ ->
+            if not options.Cli_support.quiet then
+              begin match options.Cli_support.output with
+              | Cli_support.Json ->
+                  Printf.printf
+                    "{\"valid\":true,\"file\":%s}\n"
+                    (Cli_support.json_string filename)
+              | Cli_support.Human | Cli_support.Editor ->
+                  Printf.printf "VFConf: %s: OK\n" filename
+              end;
+            Exit_code.success
 
-let severity_name = function
-| Error -> "error"
-
-let print_diagnostic diagnostic =
-Printf.eprintf
-"%s:%d:%d: %s: %s\n"
-diagnostic.file
-diagnostic.line
-diagnostic.column
-(severity_name diagnostic.severity)
-diagnostic.message
-
-let fail ?(line = 1) ?(column = 1) file message =
-print_diagnostic
-{
-severity = Error;
-file;
-line;
-column;
-message;
-};
-exit 1
-
-let has_suffix value suffix =
-let value_length = String.length value in
-let suffix_length = String.length suffix in
-
-value_length >= suffix_length
-&&
-String.sub
-value
-(value_length - suffix_length)
-suffix_length
-= suffix
-
-let validate_extension filename =
-if not (has_suffix filename ".vf.conf") then begin
-Printf.eprintf
-  "vfconf: %s: expected a '.vf.conf' file\n"
-  filename;
-exit 2
-end
-
-let validate_regular_file filename =
-if not (Sys.file_exists filename) then begin
-Printf.eprintf "vfconf: %s: file does not exist\n" filename;
-exit 3
-end;
-
-if Sys.is_directory filename then begin
-Printf.eprintf "vfconf: %s: expected a file, found a directory\n" filename;
-exit 2
-end
-
-let read_file filename =
-try
-let channel = open_in_bin filename in
-
-Fun.protect
-  ~finally:(fun () -> close_in_noerr channel)
-  (fun () ->
-    let length = in_channel_length channel in
-    really_input_string channel length)
-
-with
-| Sys_error message ->
-Printf.eprintf "vfconf: %s\n" message;
-exit 3
-
-let validate_not_empty filename source =
-if String.trim source = "" then
-fail filename "configuration file is empty"
-
-let validate_no_nul filename source =
-match String.index_opt source '\000' with
-| None ->
-()
-| Some offset ->
-fail
-~column:(offset + 1)
-filename
-"NUL byte is not allowed in VFConf source"
-
-(*
-
-* Temporary frontend.
-* Replace this function once the VFConf lexer/parser pipeline exists:
-* let lexbuf = Lexing.from_string source in
-* let ast = Parser.document Lexer.token lexbuf in
-* Validator.validate ast
-* Parser errors should eventually be converted to canonical
-* Diagnostic values preserving Lexing.position / Span information.
-    *)
-    let check_source filename source =
-  validate_not_empty filename source;
-  validate_no_nul filename source;
-
-  match Vfconf.Parse.string_result ~filename source with
-  | Error error ->
-      let diagnostic =
-        Vfconf.Parse.diagnostic_of_error error
-      in
-
-      Format.eprintf
-        "%a@."
-        Vfconf.Diagnostic.pp
-        diagnostic;
-
-      exit 1
-
-  | Ok document ->
-      let validation =
-        Vfconf.Validator.validate document
-      in
-
-      let diagnostics =
-        Vfconf.Validator.diagnostics validation
-        |> Vfconf.Validator.unique_diagnostics
-        |> Vfconf.Diagnostic.sort
-      in
-
-      if diagnostics <> [] then
-        Format.eprintf
-          "%a@."
-          Vfconf.Diagnostic.pp_all
-          diagnostics;
-
-      if Vfconf.Diagnostic.has_errors diagnostics then
-        exit 1;
-
-      document
-
-let check_file filename =
-  validate_extension filename;
-  validate_regular_file filename;
-
-  let source =
-    read_file filename
-  in
-
-  let _document =
-    check_source filename source
-  in
-
-  Printf.printf
-    "VFConf: %s: OK\n"
-    filename;
-
-  exit 0
-
-let print_version () =
-Printf.printf "VFConf %s\n" version;
-exit 0
-
-let print_help () =
-Printf.printf
-"VFConf configuration checker\n
-\n
-Usage:\n
-\  vfconf-check FILE.vf.conf\n
-\  vfconf-check --help\n
-\  vfconf-check --version\n
-\n
-Exit status:\n
-\  0  configuration accepted\n
-\  1  invalid VFConf configuration\n
-\  2  command-line or I/O error\n";
-exit 0
-
-let main () =
-match Array.to_list Sys.argv with
-| [_; "-h"]
-| [_; "--help"]
-| [_; "-help"] ->
-print_help ()
-
-| [_; "-V"]
-| [_; "--version"]
-| [_; "-version"] ->
-print_version ()
-
-| [_; filename] ->
-check_file filename
-
-| [_] ->
-Printf.eprintf
-"vfconf: missing input file\n
-Try 'vfconf-check --help' for usage.\n";
-exit 2
-
-| _ ->
-Printf.eprintf
-"vfconf: too many arguments\n
-Try 'vfconf-check --help' for usage.\n";
-exit 2
+let main arguments =
+  match Cli_support.parse arguments with
+  | Error message ->
+      Printf.eprintf "vfconf-check: %s\n" message;
+      Exit_code.command_line_error
+  | Ok (_, (["-h"] | ["--help"])) ->
+      print_string help;
+      Exit_code.success
+  | Ok (_, (["-V"] | ["--version"])) ->
+      Printf.printf "vfconf-check %s\n" version;
+      Exit_code.success
+  | Ok (options, [input]) -> run options input
+  | Ok _ ->
+      Printf.eprintf "vfconf-check: expected one input file or '-'\n";
+      Exit_code.command_line_error
 
 let () =
-main ()
+  let arguments = Array.to_list Sys.argv |> List.tl in
+  exit (main arguments)

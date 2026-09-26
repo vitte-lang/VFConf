@@ -1,0 +1,131 @@
+VITTEFOUNDATION SOFTWARE LICENSE
+Version 1.0 — 2026
+
+Copyright (c) 2026 VitteFoundation.
+All rights reserved.
+
+1. DEFINITIONS
+
+“Software” means the source code, object code, binaries, documentation, configuration files, specifications, tests, examples, build files, assets, and other materials distributed with this license.
+
+“VitteFoundation” means the copyright holder and licensor of the Software.
+
+“You” means any individual or legal entity exercising permissions granted under this license.
+
+“Modification” means any alteration, adaptation, translation, extension, derivative work, or other modification of the Software.
+
+“Distribution” means making the Software or a Modification available to any third party by any means, whether publicly or privately, except as expressly permitted by this license.
+
+“Commercial Use” means use primarily intended to generate revenue, provide a paid product or service, obtain commercial advantage, or incorporate the Software into a commercial offering.
+
+2. OWNERSHIP
+
+The Software is licensed, not sold.
+
+VitteFoundation retains all rights, title, and interest in and to the Software, including all copyrights and other intellectual property rights, except for rights expressly granted under this license.
+
+No ownership rights are transferred to You.
+
+3. PERMITTED USE
+
+Subject to the terms of this license, VitteFoundation grants You a limited, worldwide, non-exclusive, non-transferable, non-sublicensable, royalty-free license to:
+
+a. access and inspect the source code;
+
+b. use the Software for personal, educational, research, evaluation, and internal development purposes;
+
+c. compile and execute the Software;
+
+d. create Modifications for Your own permitted use;
+
+e. study the Software and its implementation;
+
+f. submit proposed changes or contributions to VitteFoundation.
+
+All rights not expressly granted are reserved.
+
+4. INTERNAL USE
+
+You may use and modify the Software within an organization for internal purposes provided that the Software, Modifications, or substantial portions thereof are not distributed outside that organization or made available as a product or service contrary to this license.
+
+Internal use does not grant any right to redistribute or sublicense the Software.
+
+5. RESTRICTIONS
+
+Without prior written permission from VitteFoundation, You may not:
+
+a. sell, license, sublicense, rent, lease, or commercially redistribute the Software;
+
+b. redistribute the Software or a substantial portion of it under another name;
+
+c. present the Software or a Modification as an independently developed original product;
+
+d. remove, obscure, alter, or replace copyright, authorship, trademark, attribution, or licensing notices;
+
+e. use the Software as the principal basis of a competing product whose purpose is substantially equivalent to the Software;
+
+f. offer the Software itself as a paid hosted or managed service;
+
+g. sublicense rights granted under this license;
+
+h. claim ownership of VitteFoundation intellectual property;
+
+i. use VitteFoundation names, trademarks, logos, project names, or visual identities in a manner that implies sponsorship, certification, endorsement, or affiliation without authorization;
+
+j. circumvent technical restrictions intentionally implemented to enforce licensing or access conditions.
+
+6. MODIFICATIONS
+
+You may create Modifications for purposes permitted by this license.
+
+Creation of a Modification does not transfer ownership of the original Software to You.
+
+You retain copyright in original material independently created by You, subject to VitteFoundation’s rights in the underlying Software.
+
+Any distribution of a Modification containing or derived from protected portions of the Software requires prior written authorization from VitteFoundation unless VitteFoundation has separately provided an explicit distribution permission.
+
+7. CONTRIBUTIONS
+
+Unless a separate contribution agreement applies, any contribution intentionally submitted to VitteFoundation for inclusion in the Software is provided under terms that permit VitteFoundation to use, reproduce, modify, distribute, sublicense, and incorporate that contribution into the Software.
+
+The contributor represents that they have sufficient rights to submit the contribution.
+
+Nothing in this section transfers ownership of unrelated works belonging to the contributor.
+
+8. COMMERCIAL LICENSING
+
+Commercial rights not granted by this license may be obtained separately from VitteFoundation.
+
+A separate written commercial license may authorize activities including:
+
+* commercial redistribution;
+* embedding in commercial products;
+* sublicensing;
+* hosted services;
+* proprietary derivative products;
+* OEM distribution;
+* alternative licensing arrangements.
+
+No commercial permission should be inferred from negotiations, discussions, contributions, or access to the source code.
+
+9. ATTRIBUTION
+
+All authorized copies of the Software or substantial portions of it must retain:
+
+Copyright (c) 2026 VitteFoundation
+
+and this license or another licensing notice expressly approved by VitteFoundation.
+
+Attribution does not grant permission to use VitteFoundation trademarks or branding.
+
+10. TRADEMARKS
+
+This license does not grant any trademark rights.
+
+Names, logos, marks, and other identifiers belonging to VitteFoundation may not be used to imply endorsement, sponsorship, certification, or official status without prior authorization.
+
+Permitted factual references to VitteFoundation or the Software are not prohibited where applicable law permits them.
+
+11. THIRD-PARTY COMPONENTS
+
+The Software may contain or depend upon third-party components distributed under separate
